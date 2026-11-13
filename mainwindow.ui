@@ -1,0 +1,346 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1600</width>
+    <height>940</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>TaxiGraph - Simulador de taxis sobre un grafo dirigido y ponderado</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <layout class="QHBoxLayout" name="layoutMain">
+    <property name="spacing">
+     <number>0</number>
+    </property>
+    <property name="leftMargin">
+     <number>6</number>
+    </property>
+    <property name="topMargin">
+     <number>6</number>
+    </property>
+    <property name="rightMargin">
+     <number>6</number>
+    </property>
+    <property name="bottomMargin">
+     <number>6</number>
+    </property>
+    <item>
+     <widget class="QSplitter" name="splitter">
+      <property name="orientation">
+       <enum>Qt::Horizontal</enum>
+      </property>
+      <property name="childrenCollapsible">
+       <bool>false</bool>
+      </property>
+      <widget class="QWidget" name="mapHost">
+       <property name="sizePolicy">
+        <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+         <horstretch>1</horstretch>
+         <verstretch>0</verstretch>
+        </sizepolicy>
+       </property>
+       <layout class="QVBoxLayout" name="layoutMapHost">
+        <property name="spacing">
+         <number>0</number>
+        </property>
+        <property name="leftMargin">
+         <number>0</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="sidePanel">
+       <property name="minimumSize">
+        <size>
+         <width>440</width>
+         <height>0</height>
+        </size>
+       </property>
+       <layout class="QVBoxLayout" name="layoutSide">
+        <property name="spacing">
+         <number>8</number>
+        </property>
+        <property name="leftMargin">
+         <number>8</number>
+        </property>
+        <property name="topMargin">
+         <number>0</number>
+        </property>
+        <property name="rightMargin">
+         <number>0</number>
+        </property>
+        <property name="bottomMargin">
+         <number>0</number>
+        </property>
+        <item>
+         <widget class="QGroupBox" name="groupSim">
+          <property name="title">
+           <string>Simulación</string>
+          </property>
+          <layout class="QGridLayout" name="gridSim">
+           <item row="3" column="0" colspan="2">
+            <widget class="QCheckBox" name="chkWeights">
+             <property name="text">
+              <string>Mostrar pesos de las calles</string>
+             </property>
+             <property name="checked">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="0">
+            <widget class="QPushButton" name="btnPause">
+             <property name="text">
+              <string>Pausar</string>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item row="0" column="1">
+            <widget class="QPushButton" name="btnReset">
+             <property name="text">
+              <string>Reiniciar</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="0">
+            <widget class="QLabel" name="lblSpeed">
+             <property name="text">
+              <string>Velocidad</string>
+             </property>
+            </widget>
+           </item>
+           <item row="1" column="1">
+            <widget class="QComboBox" name="comboSpeed">
+             <item>
+              <property name="text">
+               <string>1x</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>2x</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>4x</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item row="2" column="0">
+            <widget class="QLabel" name="lblTimeMode">
+             <property name="text">
+              <string>Modo del día</string>
+             </property>
+            </widget>
+           </item>
+           <item row="2" column="1">
+            <widget class="QComboBox" name="comboTimeMode">
+             <item>
+              <property name="text">
+               <string>Automático (según el reloj)</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Normal</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Nocturno (+$2,000)</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Hora pico (pesos x1.8)</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QGroupBox" name="groupEdit">
+          <property name="title">
+           <string>Mapa y edición del grafo</string>
+          </property>
+          <layout class="QVBoxLayout" name="layoutEdit">
+           <item>
+            <widget class="QComboBox" name="comboEditMode">
+             <item>
+              <property name="text">
+               <string>Conducir mi taxi</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Agregar nodo</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Agregar calle</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Eliminar calle</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Eliminar nodo</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Cambiar peso de una calle</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="lblEditHint">
+             <property name="text">
+              <string/>
+             </property>
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget class="QTabWidget" name="tabs">
+          <property name="currentIndex">
+           <number>0</number>
+          </property>
+          <widget class="QWidget" name="tabEarnings">
+           <attribute name="title">
+            <string>Ganancias</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="layoutEarnings">
+            <item>
+             <widget class="QWidget" name="barsHost" native="true">
+             <layout class="QVBoxLayout" name="layoutBarsHost">
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+             </layout>
+            </widget>
+            </item>
+            <item>
+             <widget class="QTableWidget" name="tableTaxis">
+              <property name="minimumSize">
+               <size>
+                <width>0</width>
+                <height>210</height>
+               </size>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="tabPassengers">
+           <attribute name="title">
+            <string>Pasajeros</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="layoutPassengers">
+            <item>
+             <widget class="QTableWidget" name="tablePassengers"/>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="tabChart">
+           <attribute name="title">
+            <string>Gráfico</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="layoutChart">
+            <item>
+             <widget class="QWidget" name="chartHost" native="true">
+             <layout class="QVBoxLayout" name="layoutChartHost">
+              <property name="leftMargin">
+               <number>0</number>
+              </property>
+              <property name="topMargin">
+               <number>0</number>
+              </property>
+              <property name="rightMargin">
+               <number>0</number>
+              </property>
+              <property name="bottomMargin">
+               <number>0</number>
+              </property>
+             </layout>
+            </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="tabLog">
+           <attribute name="title">
+            <string>Eventos</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="layoutLog">
+            <item>
+             <widget class="QTextEdit" name="txtLog">
+              <property name="readOnly">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+           </layout>
+          </widget>
+          <widget class="QWidget" name="tabInfo">
+           <attribute name="title">
+            <string>Guía</string>
+           </attribute>
+           <layout class="QVBoxLayout" name="layoutInfo">
+            <item>
+             <widget class="QTextBrowser" name="txtInfo"/>
+            </item>
+           </layout>
+          </widget>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </widget>
+    </item>
+   </layout>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>
