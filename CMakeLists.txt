@@ -10,9 +10,36 @@ set(CMAKE_AUTOUIC ON)
 find_package(Qt6 REQUIRED COMPONENTS Widgets Charts)
 qt_standard_project_setup()
 
-# Todo el codigo C++ vive en main.cpp; los formularios estan en los archivos .ui
+# Cada clase vive en su propio archivo .cpp (sin .h); los formularios estan en los archivos .ui
 qt_add_executable(TaxiGraph
     main.cpp
+    Nodo.cpp
+    Arista.cpp
+    ElementoNodo.cpp
+    ListaNodos.cpp
+    ElementoArista.cpp
+    ListaAristas.cpp
+    NodoCola.cpp
+    Cola.cpp
+    NodoPila.cpp
+    Pila.cpp
+    ResultadoRuta.cpp
+    Pasajero.cpp
+    ManzanaCiudad.cpp
+    TextoFlotante.cpp
+    Grafo.cpp
+    RelojSimulacion.cpp
+    Taxi.cpp
+    TaxiBFS.cpp
+    TaxiDFS.cpp
+    TaxiDijkstra.cpp
+    TaxiManual.cpp
+    Simulacion.cpp
+    MapaWidget.cpp
+    BarrasGananciasWidget.cpp
+    GraficoGananciasWidget.cpp
+    DialogoNodo.cpp
+    MainWindow.cpp
     mainwindow.ui
     nodedialog.ui
 )
