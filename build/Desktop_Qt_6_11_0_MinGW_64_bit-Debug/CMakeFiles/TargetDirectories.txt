@@ -1,5 +1,0 @@
-C:/Users/Samue/OneDrive/Documentos/Trabajos Semestre 5/Proyecto Taxis Repositorio/Simulador-Taxis/build/Desktop_Qt_6_11_0_MinGW_64_bit-Debug/CMakeFiles/TaxiGraph.dir
-C:/Users/Samue/OneDrive/Documentos/Trabajos Semestre 5/Proyecto Taxis Repositorio/Simulador-Taxis/build/Desktop_Qt_6_11_0_MinGW_64_bit-Debug/CMakeFiles/edit_cache.dir
-C:/Users/Samue/OneDrive/Documentos/Trabajos Semestre 5/Proyecto Taxis Repositorio/Simulador-Taxis/build/Desktop_Qt_6_11_0_MinGW_64_bit-Debug/CMakeFiles/rebuild_cache.dir
-C:/Users/Samue/OneDrive/Documentos/Trabajos Semestre 5/Proyecto Taxis Repositorio/Simulador-Taxis/build/Desktop_Qt_6_11_0_MinGW_64_bit-Debug/CMakeFiles/TaxiGraph_autogen_timestamp_deps.dir
-C:/Users/Samue/OneDrive/Documentos/Trabajos Semestre 5/Proyecto Taxis Repositorio/Simulador-Taxis/build/Desktop_Qt_6_11_0_MinGW_64_bit-Debug/CMakeFiles/TaxiGraph_autogen.dir
