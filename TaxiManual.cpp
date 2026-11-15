@@ -1,33 +1,29 @@
-#pragma once
+#include "TaxiManual.h"
 
-#include "Taxi.cpp"
+#include "Grafo.h"
 
-class TaxiManual : public Taxi
+TaxiManual::TaxiManual(int id, QString nombre, QColor color, int nodoInicial, Grafo *grafo)
+    : Taxi(id, nombre, color, nodoInicial, grafo)
 {
-public:
-    TaxiManual(int id, QString nombre, QColor color, int nodoInicial, Grafo *grafo)
-        : Taxi(id, nombre, color, nodoInicial, grafo)
-    {
-    }
+}
 
-    QString nombreAlgoritmo() const override
-    {
-        return QStringLiteral("Manual");
-    }
+QString TaxiManual::nombreAlgoritmo() const
+{
+    return QStringLiteral("Manual");
+}
 
-    bool esManual() const override
-    {
-        return true;
-    }
+bool TaxiManual::esManual() const
+{
+    return true;
+}
 
-    bool agregarNodoARuta(int idNodo, Grafo *grafo)
+bool TaxiManual::agregarNodoARuta(int idNodo, Grafo *grafo)
+{
+    int desde = nodoFinalDeRuta();
+    if (grafo == nullptr || !grafo->existeAristaDirigida(desde, idNodo))
     {
-        int desde = nodoFinalDeRuta();
-        if (grafo == nullptr || !grafo->existeAristaDirigida(desde, idNodo))
-        {
-            return false;
-        }
-        agregarPasoARuta(idNodo);
-        return true;
+        return false;
     }
-};
+    agregarPasoARuta(idNodo);
+    return true;
+}

@@ -1,24 +1,20 @@
-#pragma once
+#include "TaxiDijkstra.h"
 
-#include "Taxi.cpp"
+#include "Grafo.h"
 
-class TaxiDijkstra : public Taxi
+TaxiDijkstra::TaxiDijkstra(int id, QString nombre, QColor color, int nodoInicial, Grafo *grafo)
+    : Taxi(id, nombre, color, nodoInicial, grafo)
 {
-public:
-    TaxiDijkstra(int id, QString nombre, QColor color, int nodoInicial, Grafo *grafo)
-        : Taxi(id, nombre, color, nodoInicial, grafo)
-    {
-    }
+}
 
-    QString nombreAlgoritmo() const override
-    {
-        return QStringLiteral("Dijkstra");
-    }
+QString TaxiDijkstra::nombreAlgoritmo() const
+{
+    return QStringLiteral("Dijkstra");
+}
 
-    ResultadoRuta calcularRuta(Grafo *grafo, int origen, int destino) override
-    {
-        ResultadoRuta res = grafo->buscarRutaDijkstra(origen, destino);
-        sumarExplorados(res.getNodosExplorados());
-        return res;
-    }
-};
+ResultadoRuta TaxiDijkstra::calcularRuta(Grafo *grafo, int origen, int destino)
+{
+    ResultadoRuta res = grafo->buscarRutaDijkstra(origen, destino);
+    sumarExplorados(res.getNodosExplorados());
+    return res;
+}

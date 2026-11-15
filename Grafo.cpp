@@ -1,634 +1,609 @@
-#pragma once
+#include "Grafo.h"
+
+#include "Arista.h"
+#include "Cola.h"
+#include "ElementoArista.h"
+#include "ElementoNodo.h"
+#include "ListaAristas.h"
+#include "ListaNodos.h"
+#include "Nodo.h"
+#include "Pila.h"
 
 #include <QLineF>
 #include <QLocale>
-#include <QObject>
-#include <QPointF>
-#include <QString>
 #include <QtMath>
 #include <cmath>
 
-#include "Arista.cpp"
-#include "Cola.cpp"
-#include "ElementoArista.cpp"
-#include "ElementoNodo.cpp"
-#include "ListaAristas.cpp"
-#include "ListaNodos.cpp"
-#include "Nodo.cpp"
-#include "Pila.cpp"
-#include "ResultadoRuta.cpp"
-
-class Grafo : public QObject
+ResultadoRuta Grafo::reconstruirRuta(int anterior[], int origen, int destino, int explorados) const
 {
-    Q_OBJECT
+    ResultadoRuta resultado;
+    resultado.setNodosExplorados(explorados);
 
-private:
-    ListaNodos *nodos;
-    ListaAristas *aristas;
-    double multiplicadorHoraPico;
-
-    ResultadoRuta reconstruirRuta(int anterior[], int origen, int destino, int explorados) const
+    if (origen == destino)
     {
-        ResultadoRuta resultado;
-        resultado.setNodosExplorados(explorados);
-
-        if (origen == destino)
-        {
-            resultado.setEncontrada(true);
-            resultado.agregarNodoAlCamino(origen);
-            return resultado;
-        }
-
-        if (anterior[destino] == -1)
-        {
-            return resultado;
-        }
-
-        int inverso[100];
-        int total = 0;
-        int actual = destino;
-
-        while (actual != -1 && total < 100)
-        {
-            inverso[total] = actual;
-            total++;
-            if (actual == origen)
-            {
-                break;
-            }
-            actual = anterior[actual];
-        }
-
-        if (total == 0 || inverso[total - 1] != origen)
-        {
-            return resultado;
-        }
-
-        double sumaPesos = 0.0;
-        for (int i = total - 1; i >= 0; i--)
-        {
-            resultado.agregarNodoAlCamino(inverso[i]);
-            if (i > 0)
-            {
-                sumaPesos += obtenerPesoEfectivo(inverso[i], inverso[i - 1]);
-            }
-        }
-
         resultado.setEncontrada(true);
-        resultado.setTiempoPonderado(sumaPesos);
+        resultado.agregarNodoAlCamino(origen);
         return resultado;
     }
 
-public:
-    explicit Grafo(QObject *parent = nullptr) : QObject(parent)
+    if (anterior[destino] == -1)
     {
-        nodos = new ListaNodos();
-        aristas = new ListaAristas();
-        multiplicadorHoraPico = 1.0;
+        return resultado;
     }
 
-    ~Grafo() override
-    {
-        delete nodos;
-        delete aristas;
-        nodos = nullptr;
-        aristas = nullptr;
-    }
+    int inverso[100];
+    int total = 0;
+    int actual = destino;
 
-    ListaNodos *getNodos() const { return nodos; }
-    ListaAristas *getAristas() const { return aristas; }
-
-    Nodo *buscarNodo(int id) const
+    while (actual != -1 && total < 100)
     {
-        return nodos->buscarPorId(id);
-    }
-
-    bool tieneNodo(int id) const
-    {
-        return buscarNodo(id) != nullptr;
-    }
-
-    int obtenerSiguienteIdDisponible() const
-    {
-        for (int i = 0; i < 100; i++)
+        inverso[total] = actual;
+        total++;
+        if (actual == origen)
         {
-            if (buscarNodo(i) == nullptr)
-            {
-                return i;
-            }
+            break;
         }
+        actual = anterior[actual];
+    }
+
+    if (total == 0 || inverso[total - 1] != origen)
+    {
+        return resultado;
+    }
+
+    double sumaPesos = 0.0;
+    for (int i = total - 1; i >= 0; i--)
+    {
+        resultado.agregarNodoAlCamino(inverso[i]);
+        if (i > 0)
+        {
+            sumaPesos += obtenerPesoEfectivo(inverso[i], inverso[i - 1]);
+        }
+    }
+
+    resultado.setEncontrada(true);
+    resultado.setTiempoPonderado(sumaPesos);
+    return resultado;
+}
+
+Grafo::Grafo(QObject *parent) : QObject(parent)
+{
+    nodos = new ListaNodos();
+    aristas = new ListaAristas();
+    multiplicadorHoraPico = 1.0;
+}
+
+Grafo::~Grafo()
+{
+    delete nodos;
+    delete aristas;
+    nodos = nullptr;
+    aristas = nullptr;
+}
+
+ListaNodos *Grafo::getNodos() const
+{
+    return nodos;
+}
+
+ListaAristas *Grafo::getAristas() const
+{
+    return aristas;
+}
+
+Nodo *Grafo::buscarNodo(int id) const
+{
+    return nodos->buscarPorId(id);
+}
+
+bool Grafo::tieneNodo(int id) const
+{
+    return buscarNodo(id) != nullptr;
+}
+
+int Grafo::obtenerSiguienteIdDisponible() const
+{
+    for (int i = 0; i < 100; i++)
+    {
+        if (buscarNodo(i) == nullptr)
+        {
+            return i;
+        }
+    }
+    return -1;
+}
+
+int Grafo::agregarNodo(int id, QString nombre, int x, int y, QString tipo)
+{
+    if (id < 0 || id >= 100 || buscarNodo(id) != nullptr)
+    {
         return -1;
     }
 
-    int agregarNodo(int id, QString nombre, int x, int y, QString tipo)
-    {
-        if (id < 0 || id >= 100 || buscarNodo(id) != nullptr)
-        {
-            return -1;
-        }
+    nodos->agregar(new Nodo(id, nombre, x, y, tipo));
+    emit grafoModificado();
+    return id;
+}
 
-        nodos->agregar(new Nodo(id, nombre, x, y, tipo));
-        emit grafoModificado();
-        return id;
+int Grafo::agregarNodoNuevo(QString nombre, QPointF posicion, QString tipo)
+{
+    int id = obtenerSiguienteIdDisponible();
+    if (id < 0)
+    {
+        return -1;
+    }
+    return agregarNodo(id, nombre, static_cast<int>(posicion.x()), static_cast<int>(posicion.y()), tipo);
+}
+
+bool Grafo::eliminarNodo(int id)
+{
+    if (buscarNodo(id) == nullptr)
+    {
+        return false;
     }
 
-    int agregarNodoNuevo(QString nombre, QPointF posicion, QString tipo)
+    aristas->eliminarAristasDeNodo(id);
+    bool ok = nodos->eliminarPorId(id);
+    emit grafoModificado();
+    return ok;
+}
+
+double Grafo::sugerirPeso(int nodoA, int nodoB, bool esAvenida) const
+{
+    Nodo *a = buscarNodo(nodoA);
+    Nodo *b = buscarNodo(nodoB);
+    if (a == nullptr || b == nullptr)
     {
-        int id = obtenerSiguienteIdDisponible();
-        if (id < 0)
-        {
-            return -1;
-        }
-        return agregarNodo(id, nombre, static_cast<int>(posicion.x()), static_cast<int>(posicion.y()), tipo);
+        return 1.0;
     }
 
-    bool eliminarNodo(int id)
+    double distancia = QLineF(a->getPosicion(), b->getPosicion()).length() / 130.0;
+    if (esAvenida)
     {
-        if (buscarNodo(id) == nullptr)
-        {
-            return false;
-        }
-
-        aristas->eliminarAristasDeNodo(id);
-        bool ok = nodos->eliminarPorId(id);
-        emit grafoModificado();
-        return ok;
+        distancia = distancia * 0.75;
     }
 
-    double sugerirPeso(int nodoA, int nodoB, bool esAvenida) const
+    double redondeado = std::round(distancia * 10.0) / 10.0;
+    if (redondeado < 0.5)
     {
-        Nodo *a = buscarNodo(nodoA);
-        Nodo *b = buscarNodo(nodoB);
-        if (a == nullptr || b == nullptr)
-        {
-            return 1.0;
-        }
+        redondeado = 0.5;
+    }
+    return redondeado;
+}
 
-        double distancia = QLineF(a->getPosicion(), b->getPosicion()).length() / 130.0;
-        if (esAvenida)
-        {
-            distancia = distancia * 0.75;
-        }
-
-        double redondeado = std::round(distancia * 10.0) / 10.0;
-        if (redondeado < 0.5)
-        {
-            redondeado = 0.5;
-        }
-        return redondeado;
+bool Grafo::agregarArista(int origen, int destino, double peso, bool esAvenida)
+{
+    if (origen == destino || buscarNodo(origen) == nullptr || buscarNodo(destino) == nullptr)
+    {
+        return false;
     }
 
-    bool agregarArista(int origen, int destino, double peso = -1.0, bool esAvenida = false)
+    if (aristas->existeArista(origen, destino))
     {
-        if (origen == destino || buscarNodo(origen) == nullptr || buscarNodo(destino) == nullptr)
-        {
-            return false;
-        }
+        return false;
+    }
 
-        if (aristas->existeArista(origen, destino))
-        {
-            return false;
-        }
+    double pesoCalculado = peso;
+    if (pesoCalculado <= 0.0)
+    {
+        pesoCalculado = sugerirPeso(origen, destino, esAvenida);
+    }
 
-        double pesoCalculado = peso;
-        if (pesoCalculado <= 0.0)
-        {
-            pesoCalculado = sugerirPeso(origen, destino, esAvenida);
-        }
+    aristas->agregar(new Arista(origen, destino, pesoCalculado, esAvenida));
+    emit grafoModificado();
+    return true;
+}
 
-        aristas->agregar(new Arista(origen, destino, pesoCalculado, esAvenida));
+bool Grafo::agregarCalleDoble(int nodoA, int nodoB, double peso, bool esAvenida)
+{
+    double pesoCalculado = peso;
+    if (pesoCalculado <= 0.0)
+    {
+        pesoCalculado = sugerirPeso(nodoA, nodoB, esAvenida);
+    }
+
+    bool ab = agregarArista(nodoA, nodoB, pesoCalculado, esAvenida);
+    bool ba = agregarArista(nodoB, nodoA, pesoCalculado, esAvenida);
+    return ab || ba;
+}
+
+bool Grafo::eliminarCalle(int nodoA, int nodoB)
+{
+    bool ab = aristas->eliminarArista(nodoA, nodoB);
+    bool ba = aristas->eliminarArista(nodoB, nodoA);
+    if (ab || ba)
+    {
         emit grafoModificado();
         return true;
     }
+    return false;
+}
 
-    bool agregarCalleDoble(int nodoA, int nodoB, double peso = -1.0, bool esAvenida = false)
+bool Grafo::cambiarPeso(int nodoA, int nodoB, double nuevoPeso)
+{
+    if (nuevoPeso <= 0.0)
     {
-        double pesoCalculado = peso;
-        if (pesoCalculado <= 0.0)
-        {
-            pesoCalculado = sugerirPeso(nodoA, nodoB, esAvenida);
-        }
-
-        bool ab = agregarArista(nodoA, nodoB, pesoCalculado, esAvenida);
-        bool ba = agregarArista(nodoB, nodoA, pesoCalculado, esAvenida);
-        return ab || ba;
+        return false;
     }
 
-    bool eliminarCalle(int nodoA, int nodoB)
+    Arista *ab = aristas->obtenerArista(nodoA, nodoB);
+    Arista *ba = aristas->obtenerArista(nodoB, nodoA);
+    if (ab == nullptr && ba == nullptr)
     {
-        bool ab = aristas->eliminarArista(nodoA, nodoB);
-        bool ba = aristas->eliminarArista(nodoB, nodoA);
-        if (ab || ba)
+        return false;
+    }
+
+    if (ab != nullptr)
+    {
+        ab->setPeso(nuevoPeso);
+        ab->setPesoInicial(nuevoPeso);
+    }
+    if (ba != nullptr)
+    {
+        ba->setPeso(nuevoPeso);
+        ba->setPesoInicial(nuevoPeso);
+    }
+
+    emit grafoModificado();
+    return true;
+}
+
+void Grafo::limpiar()
+{
+    nodos->limpiar();
+    aristas->limpiar();
+    emit grafoModificado();
+}
+
+Arista *Grafo::obtenerArista(int origen, int destino) const
+{
+    return aristas->obtenerArista(origen, destino);
+}
+
+bool Grafo::existeAristaDirigida(int origen, int destino) const
+{
+    return aristas->existeArista(origen, destino);
+}
+
+bool Grafo::tieneSalidas(int idNodo) const
+{
+    ElementoArista *actual = aristas->getPrimero();
+    while (actual != nullptr)
+    {
+        Arista *a = actual->getArista();
+        if (a != nullptr && a->getOrigen() == idNodo)
         {
-            emit grafoModificado();
             return true;
         }
-        return false;
+        actual = actual->getSiguiente();
+    }
+    return false;
+}
+
+double Grafo::obtenerPesoEfectivo(int origen, int destino) const
+{
+    Arista *a = aristas->obtenerArista(origen, destino);
+    if (a == nullptr)
+    {
+        return 0.0;
+    }
+    return a->getPeso() * multiplicadorHoraPico;
+}
+
+double Grafo::obtenerPesoEfectivoArista(Arista *a) const
+{
+    if (a == nullptr)
+    {
+        return 0.0;
+    }
+    return a->getPeso() * multiplicadorHoraPico;
+}
+
+double Grafo::obtenerNivelCongestion(Arista *a) const
+{
+    if (a == nullptr)
+    {
+        return 1.0;
+    }
+    double base = a->getPesoInicial();
+    if (base < 0.1)
+    {
+        base = 0.1;
+    }
+    return (a->getPeso() / base) * multiplicadorHoraPico;
+}
+
+void Grafo::registrarUso(int origen, int destino)
+{
+    Arista *ab = aristas->obtenerArista(origen, destino);
+    if (ab == nullptr)
+    {
+        return;
     }
 
-    bool cambiarPeso(int nodoA, int nodoB, double nuevoPeso)
+    double maximo = ab->getPesoInicial() * 3.0;
+    double nuevoPeso = ab->getPeso() + 0.2;
+    if (nuevoPeso > maximo)
     {
-        if (nuevoPeso <= 0.0)
-        {
-            return false;
-        }
-
-        Arista *ab = aristas->obtenerArista(nodoA, nodoB);
-        Arista *ba = aristas->obtenerArista(nodoB, nodoA);
-        if (ab == nullptr && ba == nullptr)
-        {
-            return false;
-        }
-
-        if (ab != nullptr)
-        {
-            ab->setPeso(nuevoPeso);
-            ab->setPesoInicial(nuevoPeso);
-        }
-        if (ba != nullptr)
-        {
-            ba->setPeso(nuevoPeso);
-            ba->setPesoInicial(nuevoPeso);
-        }
-
-        emit grafoModificado();
-        return true;
+        nuevoPeso = maximo;
     }
+    ab->setPeso(nuevoPeso);
 
-    void limpiar()
+    Arista *ba = aristas->obtenerArista(destino, origen);
+    if (ba != nullptr)
     {
-        nodos->limpiar();
-        aristas->limpiar();
-        emit grafoModificado();
+        ba->setPeso(nuevoPeso);
     }
+}
 
-    Arista *obtenerArista(int origen, int destino) const
-    {
-        return aristas->obtenerArista(origen, destino);
-    }
+int Grafo::nodoMasCercano(QPointF punto, double distanciaMaxima) const
+{
+    int mejorId = -1;
+    double mejorDistancia = distanciaMaxima;
 
-    bool existeAristaDirigida(int origen, int destino) const
+    ElementoNodo *actual = nodos->getPrimero();
+    while (actual != nullptr)
     {
-        return aristas->existeArista(origen, destino);
-    }
-
-    bool tieneSalidas(int idNodo) const
-    {
-        ElementoArista *actual = aristas->getPrimero();
-        while (actual != nullptr)
+        Nodo *n = actual->getNodo();
+        if (n != nullptr)
         {
-            Arista *a = actual->getArista();
-            if (a != nullptr && a->getOrigen() == idNodo)
+            double d = QLineF(punto, n->getPosicion()).length();
+            if (d <= mejorDistancia)
             {
-                return true;
+                mejorDistancia = d;
+                mejorId = n->getId();
             }
-            actual = actual->getSiguiente();
         }
-        return false;
+        actual = actual->getSiguiente();
     }
 
-    double obtenerPesoEfectivo(int origen, int destino) const
+    return mejorId;
+}
+
+void Grafo::setMultiplicadorHoraPico(double multiplicador)
+{
+    this->multiplicadorHoraPico = multiplicador;
+}
+
+double Grafo::getMultiplicadorHoraPico() const
+{
+    return multiplicadorHoraPico;
+}
+
+ResultadoRuta Grafo::buscarRutaBFS(int origen, int destino) const
+{
+    const int MAX = 100;
+    if (origen < 0 || origen >= MAX || destino < 0 || destino >= MAX)
     {
-        Arista *a = aristas->obtenerArista(origen, destino);
-        if (a == nullptr)
-        {
-            return 0.0;
-        }
-        return a->getPeso() * multiplicadorHoraPico;
+        return ResultadoRuta();
+    }
+    if (buscarNodo(origen) == nullptr || buscarNodo(destino) == nullptr)
+    {
+        return ResultadoRuta();
     }
 
-    double obtenerPesoEfectivoArista(Arista *a) const
+    bool visitado[MAX];
+    int anterior[MAX];
+    for (int i = 0; i < MAX; i++)
     {
-        if (a == nullptr)
-        {
-            return 0.0;
-        }
-        return a->getPeso() * multiplicadorHoraPico;
+        visitado[i] = false;
+        anterior[i] = -1;
     }
 
-    double obtenerNivelCongestion(Arista *a) const
+    Cola cola;
+    cola.encolar(origen);
+    visitado[origen] = true;
+    int explorados = 0;
+
+    while (!cola.estaVacia())
     {
-        if (a == nullptr)
-        {
-            return 1.0;
-        }
-        double base = a->getPesoInicial();
-        if (base < 0.1)
-        {
-            base = 0.1;
-        }
-        return (a->getPeso() / base) * multiplicadorHoraPico;
-    }
+        int actual = cola.desencolar();
+        explorados++;
 
-    /** Requerimiento: El peso de cada arista aumenta por uso. */
-    void registrarUso(int origen, int destino)
-    {
-        Arista *ab = aristas->obtenerArista(origen, destino);
-        if (ab == nullptr)
+        if (actual == destino)
         {
-            return;
+            break;
         }
 
-        double maximo = ab->getPesoInicial() * 3.0;
-        double nuevoPeso = ab->getPeso() + 0.2;
-        if (nuevoPeso > maximo)
+        ElementoArista *elem = aristas->getPrimero();
+        while (elem != nullptr)
         {
-            nuevoPeso = maximo;
-        }
-        ab->setPeso(nuevoPeso);
-
-        Arista *ba = aristas->obtenerArista(destino, origen);
-        if (ba != nullptr)
-        {
-            ba->setPeso(nuevoPeso);
-        }
-    }
-
-    int nodoMasCercano(QPointF punto, double distanciaMaxima = 1e9) const
-    {
-        int mejorId = -1;
-        double mejorDistancia = distanciaMaxima;
-
-        ElementoNodo *actual = nodos->getPrimero();
-        while (actual != nullptr)
-        {
-            Nodo *n = actual->getNodo();
-            if (n != nullptr)
+            Arista *a = elem->getArista();
+            if (a != nullptr && a->getOrigen() == actual)
             {
-                double d = QLineF(punto, n->getPosicion()).length();
-                if (d <= mejorDistancia)
+                int vecino = a->getDestino();
+                if (vecino >= 0 && vecino < MAX && !visitado[vecino] && buscarNodo(vecino) != nullptr)
                 {
-                    mejorDistancia = d;
-                    mejorId = n->getId();
+                    visitado[vecino] = true;
+                    anterior[vecino] = actual;
+                    cola.encolar(vecino);
                 }
             }
-            actual = actual->getSiguiente();
+            elem = elem->getSiguiente();
         }
-
-        return mejorId;
     }
 
-    void setMultiplicadorHoraPico(double multiplicador)
+    return reconstruirRuta(anterior, origen, destino, explorados);
+}
+
+ResultadoRuta Grafo::buscarRutaDFS(int origen, int destino) const
+{
+    const int MAX = 100;
+    if (origen < 0 || origen >= MAX || destino < 0 || destino >= MAX)
     {
-        this->multiplicadorHoraPico = multiplicador;
+        return ResultadoRuta();
+    }
+    if (buscarNodo(origen) == nullptr || buscarNodo(destino) == nullptr)
+    {
+        return ResultadoRuta();
     }
 
-    double getMultiplicadorHoraPico() const
+    bool visitado[MAX];
+    int anterior[MAX];
+    for (int i = 0; i < MAX; i++)
     {
-        return multiplicadorHoraPico;
+        visitado[i] = false;
+        anterior[i] = -1;
     }
 
-    // ---- Algoritmo 1: Búsqueda en Anchura (BFS) usando la clase Cola ----
-    ResultadoRuta buscarRutaBFS(int origen, int destino) const
+    Pila pila;
+    pila.apilar(origen);
+    int explorados = 0;
+
+    while (!pila.estaVacia())
     {
-        const int MAX = 100;
-        if (origen < 0 || origen >= MAX || destino < 0 || destino >= MAX)
+        int actual = pila.desapilar();
+        if (actual < 0 || actual >= MAX || visitado[actual])
         {
-            return ResultadoRuta();
-        }
-        if (buscarNodo(origen) == nullptr || buscarNodo(destino) == nullptr)
-        {
-            return ResultadoRuta();
+            continue;
         }
 
-        bool visitado[MAX];
-        int anterior[MAX];
-        for (int i = 0; i < MAX; i++)
+        visitado[actual] = true;
+        explorados++;
+
+        if (actual == destino)
         {
-            visitado[i] = false;
-            anterior[i] = -1;
+            break;
         }
 
-        Cola cola;
-        cola.encolar(origen);
-        visitado[origen] = true;
-        int explorados = 0;
-
-        while (!cola.estaVacia())
+        ElementoArista *elem = aristas->getPrimero();
+        while (elem != nullptr)
         {
-            int actual = cola.desencolar();
-            explorados++;
-
-            if (actual == destino)
+            Arista *a = elem->getArista();
+            if (a != nullptr && a->getOrigen() == actual)
             {
-                break;
-            }
-
-            ElementoArista *elem = aristas->getPrimero();
-            while (elem != nullptr)
-            {
-                Arista *a = elem->getArista();
-                if (a != nullptr && a->getOrigen() == actual)
+                int vecino = a->getDestino();
+                if (vecino >= 0 && vecino < MAX && !visitado[vecino] && buscarNodo(vecino) != nullptr)
                 {
-                    int vecino = a->getDestino();
-                    if (vecino >= 0 && vecino < MAX && !visitado[vecino] && buscarNodo(vecino) != nullptr)
+                    if (anterior[vecino] == -1)
                     {
-                        visitado[vecino] = true;
                         anterior[vecino] = actual;
-                        cola.encolar(vecino);
                     }
+                    pila.apilar(vecino);
                 }
-                elem = elem->getSiguiente();
             }
+            elem = elem->getSiguiente();
         }
-
-        return reconstruirRuta(anterior, origen, destino, explorados);
     }
 
-    // ---- Algoritmo 2: Búsqueda en Profundidad (DFS) usando la clase Pila ----
-    ResultadoRuta buscarRutaDFS(int origen, int destino) const
+    return reconstruirRuta(anterior, origen, destino, explorados);
+}
+
+ResultadoRuta Grafo::buscarRutaDijkstra(int origen, int destino) const
+{
+    const int MAX = 100;
+    if (origen < 0 || origen >= MAX || destino < 0 || destino >= MAX)
     {
-        const int MAX = 100;
-        if (origen < 0 || origen >= MAX || destino < 0 || destino >= MAX)
-        {
-            return ResultadoRuta();
-        }
-        if (buscarNodo(origen) == nullptr || buscarNodo(destino) == nullptr)
-        {
-            return ResultadoRuta();
-        }
+        return ResultadoRuta();
+    }
+    if (buscarNodo(origen) == nullptr || buscarNodo(destino) == nullptr)
+    {
+        return ResultadoRuta();
+    }
 
-        bool visitado[MAX];
-        int anterior[MAX];
-        for (int i = 0; i < MAX; i++)
-        {
-            visitado[i] = false;
-            anterior[i] = -1;
-        }
+    double distancia[MAX];
+    int anterior[MAX];
+    bool visitado[MAX];
 
-        Pila pila;
-        pila.apilar(origen);
-        int explorados = 0;
+    for (int i = 0; i < MAX; i++)
+    {
+        distancia[i] = 999999.0;
+        anterior[i] = -1;
+        visitado[i] = false;
+    }
 
-        while (!pila.estaVacia())
+    distancia[origen] = 0.0;
+    int explorados = 0;
+    int cantidad = nodos->getCantidad();
+
+    for (int i = 0; i < cantidad; i++)
+    {
+        int actual = -1;
+        double menorDistancia = 999999.0;
+
+        for (int j = 0; j < MAX; j++)
         {
-            int actual = pila.desapilar();
-            if (actual < 0 || actual >= MAX || visitado[actual])
+            if (!visitado[j] && buscarNodo(j) != nullptr && distancia[j] < menorDistancia)
             {
-                continue;
+                menorDistancia = distancia[j];
+                actual = j;
             }
+        }
 
-            visitado[actual] = true;
-            explorados++;
+        if (actual == -1)
+        {
+            break;
+        }
 
-            if (actual == destino)
+        visitado[actual] = true;
+        explorados++;
+
+        if (actual == destino)
+        {
+            break;
+        }
+
+        ElementoArista *elem = aristas->getPrimero();
+        while (elem != nullptr)
+        {
+            Arista *a = elem->getArista();
+            if (a != nullptr && a->getOrigen() == actual)
             {
-                break;
-            }
-
-            ElementoArista *elem = aristas->getPrimero();
-            while (elem != nullptr)
-            {
-                Arista *a = elem->getArista();
-                if (a != nullptr && a->getOrigen() == actual)
+                int vecino = a->getDestino();
+                if (vecino >= 0 && vecino < MAX && !visitado[vecino])
                 {
-                    int vecino = a->getDestino();
-                    if (vecino >= 0 && vecino < MAX && !visitado[vecino] && buscarNodo(vecino) != nullptr)
+                    double nuevoCosto = distancia[actual] + obtenerPesoEfectivoArista(a);
+                    if (nuevoCosto < distancia[vecino])
                     {
-                        if (anterior[vecino] == -1)
-                        {
-                            anterior[vecino] = actual;
-                        }
-                        pila.apilar(vecino);
+                        distancia[vecino] = nuevoCosto;
+                        anterior[vecino] = actual;
                     }
                 }
-                elem = elem->getSiguiente();
             }
+            elem = elem->getSiguiente();
         }
-
-        return reconstruirRuta(anterior, origen, destino, explorados);
     }
 
-    // ---- Algoritmo 3: Algoritmo de Dijkstra (camino de menor peso ponderado) ----
-    ResultadoRuta buscarRutaDijkstra(int origen, int destino) const
+    return reconstruirRuta(anterior, origen, destino, explorados);
+}
+
+double Grafo::calcularTarifa(int saltos, double tiempoPonderado, QString tipoDestino, QString periodo)
+{
+    double base = 4600.0;
+    double costoDistancia = saltos * 1625.0;
+    double costoTiempo = tiempoPonderado * 1625.0;
+    double taximetro = base + costoDistancia + costoTiempo;
+
+    if (taximetro < 8100.0)
     {
-        const int MAX = 100;
-        if (origen < 0 || origen >= MAX || destino < 0 || destino >= MAX)
-        {
-            return ResultadoRuta();
-        }
-        if (buscarNodo(origen) == nullptr || buscarNodo(destino) == nullptr)
-        {
-            return ResultadoRuta();
-        }
-
-        double distancia[MAX];
-        int anterior[MAX];
-        bool visitado[MAX];
-
-        for (int i = 0; i < MAX; i++)
-        {
-            distancia[i] = 999999.0;
-            anterior[i] = -1;
-            visitado[i] = false;
-        }
-
-        distancia[origen] = 0.0;
-        int explorados = 0;
-        int cantidad = nodos->getCantidad();
-
-        for (int i = 0; i < cantidad; i++)
-        {
-            int actual = -1;
-            double menorDistancia = 999999.0;
-
-            for (int j = 0; j < MAX; j++)
-            {
-                if (!visitado[j] && buscarNodo(j) != nullptr && distancia[j] < menorDistancia)
-                {
-                    menorDistancia = distancia[j];
-                    actual = j;
-                }
-            }
-
-            if (actual == -1)
-            {
-                break;
-            }
-
-            visitado[actual] = true;
-            explorados++;
-
-            if (actual == destino)
-            {
-                break;
-            }
-
-            ElementoArista *elem = aristas->getPrimero();
-            while (elem != nullptr)
-            {
-                Arista *a = elem->getArista();
-                if (a != nullptr && a->getOrigen() == actual)
-                {
-                    int vecino = a->getDestino();
-                    if (vecino >= 0 && vecino < MAX && !visitado[vecino])
-                    {
-                        double nuevoCosto = distancia[actual] + obtenerPesoEfectivoArista(a);
-                        if (nuevoCosto < distancia[vecino])
-                        {
-                            distancia[vecino] = nuevoCosto;
-                            anterior[vecino] = actual;
-                        }
-                    }
-                }
-                elem = elem->getSiguiente();
-            }
-        }
-
-        return reconstruirRuta(anterior, origen, destino, explorados);
+        taximetro = 8100.0;
     }
 
-    /**
-     * Fórmula del Taxímetro:
-     *   Taxímetro = Base ($4,600) + Distancia (salto) x $1,625 + Tiempo (ponderado) x $1,625
-     *   Mínimo = $8,100
-     *   Recargos: Aeropuerto (+$8,600), Terminal (+$2,400), Turístico (+$2,000), Nocturno (+$2,000)
-     */
-    static double calcularTarifa(int saltos, double tiempoPonderado, QString tipoDestino, QString periodo)
+    double recargoDestino = 0.0;
+    if (tipoDestino == "Aeropuerto")
     {
-        double base = 4600.0;
-        double costoDistancia = saltos * 1625.0;
-        double costoTiempo = tiempoPonderado * 1625.0;
-        double taximetro = base + costoDistancia + costoTiempo;
-
-        if (taximetro < 8100.0)
-        {
-            taximetro = 8100.0;
-        }
-
-        double recargoDestino = 0.0;
-        if (tipoDestino == "Aeropuerto")
-        {
-            recargoDestino = 8600.0;
-        }
-        else if (tipoDestino == "Terminal")
-        {
-            recargoDestino = 2400.0;
-        }
-        else if (tipoDestino == "Turistico")
-        {
-            recargoDestino = 2000.0;
-        }
-
-        double recargoNocturno = 0.0;
-        if (periodo == "Nocturno")
-        {
-            recargoNocturno = 2000.0;
-        }
-
-        return taximetro + recargoDestino + recargoNocturno;
+        recargoDestino = 8600.0;
     }
-
-    static QString formatearPesos(double valor)
+    else if (tipoDestino == "Terminal")
     {
-        qint64 redondeado = qRound64(valor);
-        return QStringLiteral("$ ") + QLocale(QLocale::English).toString(qAbs(redondeado));
+        recargoDestino = 2400.0;
+    }
+    else if (tipoDestino == "Turistico")
+    {
+        recargoDestino = 2000.0;
     }
 
-signals:
-    void grafoModificado();
-};
+    double recargoNocturno = 0.0;
+    if (periodo == "Nocturno")
+    {
+        recargoNocturno = 2000.0;
+    }
 
-#ifdef COMPILAR_MOCS
-#include "Grafo.moc"
-#endif
+    return taximetro + recargoDestino + recargoNocturno;
+}
+
+QString Grafo::formatearPesos(double valor)
+{
+    qint64 redondeado = qRound64(valor);
+    return QStringLiteral("$ ") + QLocale(QLocale::English).toString(qAbs(redondeado));
+}

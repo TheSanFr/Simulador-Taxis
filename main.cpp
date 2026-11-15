@@ -1,35 +1,7 @@
-#define COMPILAR_MOCS
+#include "MainWindow.h"
 
 #include <QApplication>
 #include <QString>
-
-#include "Nodo.cpp"
-#include "Arista.cpp"
-#include "ElementoNodo.cpp"
-#include "ListaNodos.cpp"
-#include "ElementoArista.cpp"
-#include "ListaAristas.cpp"
-#include "NodoCola.cpp"
-#include "Cola.cpp"
-#include "NodoPila.cpp"
-#include "Pila.cpp"
-#include "ResultadoRuta.cpp"
-#include "Pasajero.cpp"
-#include "ManzanaCiudad.cpp"
-#include "TextoFlotante.cpp"
-#include "Grafo.cpp"
-#include "RelojSimulacion.cpp"
-#include "Taxi.cpp"
-#include "TaxiBFS.cpp"
-#include "TaxiDFS.cpp"
-#include "TaxiDijkstra.cpp"
-#include "TaxiManual.cpp"
-#include "Simulacion.cpp"
-#include "MapaWidget.cpp"
-#include "BarrasGananciasWidget.cpp"
-#include "GraficoGananciasWidget.cpp"
-#include "DialogoNodo.cpp"
-#include "MainWindow.cpp"
 
 int main(int argc, char *argv[])
 {

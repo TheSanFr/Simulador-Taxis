@@ -1,24 +1,20 @@
-#pragma once
+#include "TaxiDFS.h"
 
-#include "Taxi.cpp"
+#include "Grafo.h"
 
-class TaxiDFS : public Taxi
+TaxiDFS::TaxiDFS(int id, QString nombre, QColor color, int nodoInicial, Grafo *grafo)
+    : Taxi(id, nombre, color, nodoInicial, grafo)
 {
-public:
-    TaxiDFS(int id, QString nombre, QColor color, int nodoInicial, Grafo *grafo)
-        : Taxi(id, nombre, color, nodoInicial, grafo)
-    {
-    }
+}
 
-    QString nombreAlgoritmo() const override
-    {
-        return QStringLiteral("DFS");
-    }
+QString TaxiDFS::nombreAlgoritmo() const
+{
+    return QStringLiteral("DFS");
+}
 
-    ResultadoRuta calcularRuta(Grafo *grafo, int origen, int destino) override
-    {
-        ResultadoRuta res = grafo->buscarRutaDFS(origen, destino);
-        sumarExplorados(res.getNodosExplorados());
-        return res;
-    }
-};
+ResultadoRuta TaxiDFS::calcularRuta(Grafo *grafo, int origen, int destino)
+{
+    ResultadoRuta res = grafo->buscarRutaDFS(origen, destino);
+    sumarExplorados(res.getNodosExplorados());
+    return res;
+}

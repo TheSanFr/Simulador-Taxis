@@ -1,19 +1,22 @@
-#pragma once
+#include "NodoPila.h"
 
-class NodoPila
+NodoPila::NodoPila(int dato)
 {
-private:
-    int dato;
-    NodoPila *siguiente;
+    this->dato = dato;
+    this->siguiente = nullptr;
+}
 
-public:
-    NodoPila(int dato)
-    {
-        this->dato = dato;
-        this->siguiente = nullptr;
-    }
+int NodoPila::getDato() const
+{
+    return dato;
+}
 
-    int getDato() const { return dato; }
-    NodoPila *getSiguiente() const { return siguiente; }
-    void setSiguiente(NodoPila *siguiente) { this->siguiente = siguiente; }
-};
+NodoPila *NodoPila::getSiguiente() const
+{
+    return siguiente;
+}
+
+void NodoPila::setSiguiente(NodoPila *siguiente)
+{
+    this->siguiente = siguiente;
+}

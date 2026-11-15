@@ -1,21 +1,22 @@
-#pragma once
+#include "ElementoArista.h"
 
-#include "Arista.cpp"
-
-class ElementoArista
+ElementoArista::ElementoArista(Arista *arista)
 {
-private:
-    Arista *arista;
-    ElementoArista *siguiente;
+    this->arista = arista;
+    this->siguiente = nullptr;
+}
 
-public:
-    ElementoArista(Arista *arista)
-    {
-        this->arista = arista;
-        this->siguiente = nullptr;
-    }
+Arista *ElementoArista::getArista() const
+{
+    return arista;
+}
 
-    Arista *getArista() const { return arista; }
-    ElementoArista *getSiguiente() const { return siguiente; }
-    void setSiguiente(ElementoArista *siguiente) { this->siguiente = siguiente; }
-};
+ElementoArista *ElementoArista::getSiguiente() const
+{
+    return siguiente;
+}
+
+void ElementoArista::setSiguiente(ElementoArista *siguiente)
+{
+    this->siguiente = siguiente;
+}

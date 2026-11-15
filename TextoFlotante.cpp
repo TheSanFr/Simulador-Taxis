@@ -1,29 +1,34 @@
-#pragma once
+#include "TextoFlotante.h"
 
-#include <QColor>
-#include <QPointF>
-#include <QString>
-
-class TextoFlotante
+TextoFlotante::TextoFlotante(QPointF posicion, QString texto, QColor color)
 {
-private:
-    QPointF posicion;
-    QString texto;
-    QColor color;
-    double edad;
+    this->posicion = posicion;
+    this->texto = texto;
+    this->color = color;
+    this->edad = 0.0;
+}
 
-public:
-    TextoFlotante(QPointF posicion, QString texto, QColor color)
-    {
-        this->posicion = posicion;
-        this->texto = texto;
-        this->color = color;
-        this->edad = 0.0;
-    }
+QPointF TextoFlotante::getPosicion() const
+{
+    return posicion;
+}
 
-    QPointF getPosicion() const { return posicion; }
-    QString getTexto() const { return texto; }
-    QColor getColor() const { return color; }
-    double getEdad() const { return edad; }
-    void avanzarEdad(double dt) { edad += dt; }
-};
+QString TextoFlotante::getTexto() const
+{
+    return texto;
+}
+
+QColor TextoFlotante::getColor() const
+{
+    return color;
+}
+
+double TextoFlotante::getEdad() const
+{
+    return edad;
+}
+
+void TextoFlotante::avanzarEdad(double dt)
+{
+    edad += dt;
+}

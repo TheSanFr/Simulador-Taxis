@@ -1,19 +1,22 @@
-#pragma once
+#include "NodoCola.h"
 
-class NodoCola
+NodoCola::NodoCola(int dato)
 {
-private:
-    int dato;
-    NodoCola *siguiente;
+    this->dato = dato;
+    this->siguiente = nullptr;
+}
 
-public:
-    NodoCola(int dato)
-    {
-        this->dato = dato;
-        this->siguiente = nullptr;
-    }
+int NodoCola::getDato() const
+{
+    return dato;
+}
 
-    int getDato() const { return dato; }
-    NodoCola *getSiguiente() const { return siguiente; }
-    void setSiguiente(NodoCola *siguiente) { this->siguiente = siguiente; }
-};
+NodoCola *NodoCola::getSiguiente() const
+{
+    return siguiente;
+}
+
+void NodoCola::setSiguiente(NodoCola *siguiente)
+{
+    this->siguiente = siguiente;
+}
