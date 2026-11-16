@@ -77,7 +77,9 @@ endif()
 
 qt_add_resources(TaxiGraph "interfaz"
     PREFIX "/"
-    FILES interfaz.qss
+    FILES
+        interfaz.qss
+        flecha-selector.png
 )
 
 target_link_libraries(TaxiGraph PRIVATE Qt6::Widgets Qt6::Charts)

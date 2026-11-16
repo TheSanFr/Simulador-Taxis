@@ -58,7 +58,7 @@ private:
 
     int buscarIndicePasajeroPorId(int idPasajero) const;
 
-    int asignarPasajeroATaxi(Taxi *taxi);
+    int elegirPasajeroObjetivo(Taxi *taxi) const;
 
     void revisarParadaTaxi(Taxi *taxi);
 
@@ -112,6 +112,7 @@ signals:
     void reinicioCompletado();
     void pausaCambiada(bool pausada);
     void mensajeEvento(QString texto, QColor color);
+    void pasajeroRecogido(int idTaxi, int origen, int destino);
     void carreraCompletada(int idTaxi, QPointF posMapa, double tarifa, QColor color);
 };
 

@@ -12,6 +12,7 @@ class GraficoGananciasWidget;
 class MapaWidget;
 class QTableWidget;
 class Simulacion;
+class Taxi;
 
 namespace Ui
 {
@@ -41,7 +42,13 @@ private:
     int modoEdicion;
     int nodoSeleccionadoEdicion;
     QTimer temporizadorTablas;
+    QTimer temporizadorAviso;
+    QString avisoTrayecto;
+    bool llegadaManualReciente = false;
 
+    const Taxi *taxiObservado() const;
+    const Taxi *taxiConAviso() const;
+    bool observandoTaxiAjeno() const;
     static void asignarCelda(QTableWidget *tabla, int fila, int col, QString texto,
                              QColor color, Qt::Alignment alineacion);
 

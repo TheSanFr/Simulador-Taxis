@@ -18,6 +18,7 @@
 
 #include <QAbstractButton>
 #include <QAbstractItemView>
+#include <QButtonGroup>
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
@@ -87,15 +88,52 @@ void MainWindow::asignarCelda(QTableWidget *tabla, int fila, int col, QString te
     item->setTextAlignment(alineacion | Qt::AlignVCenter);
 }
 
+const Taxi *MainWindow::taxiObservado() const
+{
+    const int id = ui->comboMapTaxi->currentData().toInt();
+    for (int i = 0; i < sim->getCantidadTaxis(); ++i)
+    {
+        const Taxi *taxi = sim->getTaxi(i);
+        if (taxi->getId() == id)
+            return taxi;
+    }
+    return nullptr;
+}
+
+bool MainWindow::observandoTaxiAjeno() const
+{
+    const Taxi *taxi = taxiObservado();
+    return taxi != nullptr && !taxi->esManual();
+}
+
+const Taxi *MainWindow::taxiConAviso() const
+{
+    if (const Taxi *taxi = taxiObservado())
+        return taxi;
+    return sim->getTaxiManual();
+}
+
 void MainWindow::actualizarTextoAyudaEdicion()
 {
     QString texto;
     if (modoEdicion == 0)
-        texto = QStringLiteral("Pulsa un nodo resaltado para conducir. Clic derecho para cancelar.");
+    {
+        const Taxi *taxi = taxiObservado();
+        if (observandoTaxiAjeno())
+            texto = QStringLiteral("%1 · %2").arg(taxi->getNombre(), taxi->textoEstado(sim->getGrafo()));
+        else if (sim->getTaxiManual()->getLlevaPasajero())
+            texto = QStringLiteral("Avanza hacia la bandera de destino.");
+        else
+            texto = QStringLiteral("Avanza por los cruces resaltados hacia un cliente.");
+
+        if (temporizadorAviso.isActive())
+            texto = avisoTrayecto;
+    }
     else if (modoEdicion == 1)
         texto = QStringLiteral("Pulsa un espacio libre para ubicar el nodo.");
     else if (modoEdicion == 2)
-        texto = QStringLiteral("Selecciona el nodo de origen y después el de destino.");
+        texto = nodoSeleccionadoEdicion < 0 ? QStringLiteral("Selecciona el cruce de origen.")
+                                             : QStringLiteral("Selecciona el cruce de destino.");
     else if (modoEdicion == 3)
         texto = QStringLiteral("Selecciona los dos extremos de la calle.");
     else if (modoEdicion == 4)
@@ -103,6 +141,7 @@ void MainWindow::actualizarTextoAyudaEdicion()
     else if (modoEdicion == 5)
         texto = QStringLiteral("Selecciona los dos extremos de la calle para cambiar su peso.");
     ui->lblEditHint->setText(texto);
+    ui->lblEditHint->setToolTip(texto);
 }
 
 void MainWindow::mostrarMensajeEstado(QString texto)
@@ -114,7 +153,14 @@ void MainWindow::mostrarMensajeEstado(QString texto)
 void MainWindow::configurarPanelGuia()
 {
     ui->txtInfo->setHtml(QStringLiteral(R"(
-<h3 style="color:#f4f7fa">Cómo funciona TaxiGraph</h3>
+<h3 style="color:#f4f7fa">Tu primera carrera</h3>
+<p>En Conducir, pulsa un cruce resaltado para avanzar. Las personas turquesa esperan en la calle.
+El primer taxi vacío que llega las recoge. Sigue la bandera para completar el viaje.
+Usa clic derecho para cancelar los tramos en cola.</p>
+<h3 style="color:#f4f7fa">Comparar algoritmos</h3>
+<p><b>BFS</b> busca una ruta con menos saltos. <b>DFS</b> explora una rama a fondo.
+<b>Dijkstra</b> busca una ruta de menor peso. Elige un taxi en Rutas o en la tabla de flota para ver su recorrido.</p>
+<h3 style="color:#f4f7fa">Reglas de la ciudad</h3>
 <ul>
 <li><b>Ciudad y Grafo:</b> Grafo dirigido y ponderado (<code>class Grafo</code> con <code>ListaNodos</code> y <code>ListaAristas</code>) donde las calles iniciales son de doble sentido (dos aristas dirigidas A→B y B→A) y es modificable por interfaz y por código.</li>
 <li><b>Taxis:</b> 6 autónomos (2 con <b>BFS</b>, 2 con <b>DFS</b>, 2 con <b>Dijkstra</b>) y 1 controlado por el usuario (<b>Tú</b>).</li>
@@ -163,6 +209,9 @@ void MainWindow::enModoEdicionCambiado(int indice)
     nodoSeleccionadoEdicion = -1;
     mapaWidget->setNodoPendiente(-1);
     mapaWidget->setModoConducir(modoEdicion == 0);
+    ui->comboEditMode->setVisible(modoEdicion != 0);
+    ui->lblMapTaxi->setVisible(modoEdicion == 0);
+    ui->comboMapTaxi->setVisible(modoEdicion == 0);
     actualizarTextoAyudaEdicion();
 }
 
@@ -190,6 +239,7 @@ void MainWindow::enCancelarClicado()
     {
         nodoSeleccionadoEdicion = -1;
         mapaWidget->setNodoPendiente(-1);
+        actualizarTextoAyudaEdicion();
     }
 }
 
@@ -261,6 +311,7 @@ void MainWindow::enNodoClicado(int idNodo)
     {
         nodoSeleccionadoEdicion = idNodo;
         mapaWidget->setNodoPendiente(idNodo);
+        actualizarTextoAyudaEdicion();
         return;
     }
 
@@ -268,6 +319,7 @@ void MainWindow::enNodoClicado(int idNodo)
     int destino = idNodo;
     nodoSeleccionadoEdicion = -1;
     mapaWidget->setNodoPendiente(-1);
+    actualizarTextoAyudaEdicion();
     if (origen == destino || g->buscarNodo(origen) == nullptr)
     {
         return;
@@ -351,7 +403,8 @@ void MainWindow::configurarTablas()
     t->verticalHeader()->setDefaultSectionSize(27);
     t->verticalHeader()->setVisible(false);
     t->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    t->setSelectionMode(QAbstractItemView::NoSelection);
+    t->setSelectionMode(QAbstractItemView::SingleSelection);
+    t->setSelectionBehavior(QAbstractItemView::SelectRows);
     t->setAlternatingRowColors(true);
     t->setShowGrid(false);
     t->setWordWrap(false);
@@ -379,14 +432,33 @@ void MainWindow::actualizarEstadoSimulacion()
     ui->lblGraphPeriod->setText(QStringLiteral("Día %1 · %2").arg(reloj.getDia()).arg(estado));
 
     const TaxiManual *taxi = sim->getTaxiManual();
-    ui->lblManualTrips->setText(QStringLiteral("%1 viajes").arg(taxi->getViajes()));
+    const int viajes = taxi->getViajes();
+    ui->lblManualTrips->setText(viajes == 1 ? QStringLiteral("1 viaje")
+                                           : QStringLiteral("%1 viajes").arg(viajes));
     ui->lblManualIncome->setText(Grafo::formatearPesos(taxi->getIngresos()));
-    const QString contexto = taxi->getLlevaPasajero()
-        ? taxi->textoEstado(sim->getGrafo())
-        : QStringLiteral("Disponible");
-    ui->lblManualState->setText(ui->lblManualState->fontMetrics().elidedText(
-        contexto, Qt::ElideRight, ui->lblManualState->width()));
-    ui->lblManualState->setToolTip(contexto);
+    if (taxi->getLlevaPasajero())
+    {
+        const Nodo *destino = sim->getGrafo()->buscarNodo(taxi->getDestinoPasajeroABordo());
+        ui->lblManualState->setText(QStringLiteral("A bordo"));
+        ui->lblManualDetail->setText(destino != nullptr
+            ? QStringLiteral("%1 · tarifa %2").arg(destino->getNombre(),
+                Grafo::formatearPesos(taxi->getTarifaPasajeroABordo()))
+            : QStringLiteral("Destino fuera del mapa"));
+    }
+    else if (temporizadorAviso.isActive() && llegadaManualReciente)
+    {
+        ui->lblManualState->setText(QStringLiteral("Viaje completado"));
+        ui->lblManualDetail->setText(avisoTrayecto);
+    }
+    else
+    {
+        ui->lblManualState->setText(QStringLiteral("Buscando pasajero"));
+        ui->lblManualDetail->setText(QStringLiteral("Busca a una persona en turquesa."));
+    }
+    if (modoEdicion == 0 && (temporizadorAviso.isActive() || ui->statusbar->currentMessage().isEmpty()))
+    {
+        actualizarTextoAyudaEdicion();
+    }
 }
 
 void MainWindow::actualizarTablas()
@@ -406,11 +478,11 @@ void MainWindow::actualizarTablas()
     }
 
     QTableWidget *tp = ui->tablePassengers;
-    if (tp->columnCount() != 4)
+    if (tp->columnCount() != 3)
     {
-        tp->setColumnCount(4);
-        tp->setHorizontalHeaderLabels({QStringLiteral("Estado"), QStringLiteral("Origen"),
-                                       QStringLiteral("Destino"), QStringLiteral("Tarifa")});
+        tp->setColumnCount(3);
+        tp->setHorizontalHeaderLabels({QStringLiteral("Recogida"), QStringLiteral("Destino"),
+                                       QStringLiteral("Tarifa estimada")});
         tp->verticalHeader()->setDefaultSectionSize(30);
         tp->verticalHeader()->setVisible(false);
         tp->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -424,45 +496,22 @@ void MainWindow::actualizarTablas()
     const QVector<Pasajero> &lista = sim->getPasajerosEnEspera();
     tp->setRowCount(lista.size());
     Grafo *g = sim->getGrafo();
-    int libres = 0;
-
     for (int i = 0; i < lista.size(); i++)
     {
         const Pasajero &p = lista[i];
-        QString estado = QStringLiteral("● Libre");
-        QColor colorEstado("#5eead4");
-
-        if (p.estaReservado())
-        {
-            for (int k = 0; k < sim->getCantidadTaxis(); k++)
-            {
-                Taxi *tx = sim->getTaxi(k);
-                if (tx->getId() == p.getIdTaxiAsignado())
-                {
-                    estado = QStringLiteral("→ ") + tx->getNombre();
-                    colorEstado = tx->getColor();
-                }
-            }
-        }
-        else
-        {
-            libres++;
-        }
-
         Nodo *no = g->buscarNodo(p.getOrigen());
         Nodo *nd = g->buscarNodo(p.getDestino());
-        asignarCelda(tp, i, 0, estado, colorEstado, Qt::AlignLeft);
-        asignarCelda(tp, i, 1, (no != nullptr) ? no->getNombre() : QStringLiteral("?"),
+        asignarCelda(tp, i, 0, (no != nullptr) ? no->getNombre() : QStringLiteral("?"),
                      QColor("#dbe3ef"), Qt::AlignLeft);
-        asignarCelda(tp, i, 2, (nd != nullptr) ? nd->getNombre() : QStringLiteral("?"),
+        asignarCelda(tp, i, 1, (nd != nullptr) ? nd->getNombre() : QStringLiteral("?"),
                      QColor("#dbe3ef"), Qt::AlignLeft);
-        asignarCelda(tp, i, 3,
+        asignarCelda(tp, i, 2,
                      Grafo::formatearPesos(sim->cotizarCarrera(p.getOrigen(), p.getDestino())),
                      QColor("#ffd60a"), Qt::AlignRight);
     }
 
-    ui->tabs->setTabText(1, QStringLiteral("Pasajeros · %1").arg(libres));
-    ui->tabs->setTabToolTip(1, QStringLiteral("%1 pasajeros libres").arg(libres));
+    ui->tabs->setTabText(1, QStringLiteral("Espera %1").arg(lista.size()));
+    ui->tabs->setTabToolTip(1, QStringLiteral("%1 pasajeros en espera").arg(lista.size()));
 }
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
@@ -476,14 +525,31 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     nodoSeleccionadoEdicion = -1;
 
     ui->setupUi(this);
+    ui->comboMapTaxi->addItem(QStringLiteral("Mi taxi"), sim->getTaxiManual()->getId());
+    ui->comboMapTaxi->addItem(QStringLiteral("Toda la flota"), -1);
+    for (int i = 0; i < sim->getCantidadTaxis(); ++i)
+    {
+        const Taxi *taxi = sim->getTaxi(i);
+        if (!taxi->esManual())
+            ui->comboMapTaxi->addItem(taxi->getNombre(), taxi->getId());
+    }
     const QPixmap marca = marcaGrafo();
     ui->lblGraphMark->setPixmap(marca);
     setWindowIcon(QIcon(marca));
+    ui->lblEditHint->setTextFormat(Qt::PlainText);
+    ui->lblManualDetail->setTextFormat(Qt::PlainText);
+    ui->lblNodeFocus->setTextFormat(Qt::PlainText);
     ui->lblNodeFocus->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
-    ui->layoutGraphLegend->setStretch(4, 1);
+    ui->layoutGraphLegend->setStretch(ui->layoutGraphLegend->indexOf(ui->lblNodeFocus), 1);
+    ui->layoutEdit->setStretch(ui->layoutEdit->indexOf(ui->lblEditHint), 1);
+    ui->comboTimeMode->setAccessibleName(QStringLiteral("Período de tráfico"));
+    auto *modosMapa = new QButtonGroup(this);
+    modosMapa->addButton(ui->btnDriveMode);
+    modosMapa->addButton(ui->btnEditMode);
+    ui->btnDriveMode->setChecked(true);
 
     mapaWidget = new MapaWidget(ui->mapHost);
-    ui->layoutMapHost->insertWidget(2, mapaWidget, 1);
+    ui->layoutMapHost->insertWidget(ui->layoutMapHost->indexOf(ui->graphLegend), mapaWidget, 1);
     barrasWidget = new BarrasGananciasWidget(ui->barsHost);
     ui->barsHost->layout()->addWidget(barrasWidget);
     graficoWidget = new GraficoGananciasWidget(ui->chartHost);
@@ -491,16 +557,17 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
     mapaWidget->setSimulacion(sim);
     mapaWidget->setMostrarPesos(ui->chkWeights->isChecked());
+    mapaWidget->setTaxiEnFoco(ui->comboMapTaxi->currentData().toInt());
     barrasWidget->setSimulacion(sim);
     graficoWidget->setSimulacion(sim);
 
     ui->splitter->setStretchFactor(0, 1);
     ui->splitter->setStretchFactor(1, 0);
-    ui->splitter->setSizes({920, 420});
+    ui->splitter->setSizes({1030, 355});
 
     configurarTablas();
     configurarPanelGuia();
-    actualizarTextoAyudaEdicion();
+    enModoEdicionCambiado(0);
     actualizarResumenGrafo();
 
     connect(sim->getGrafo(), &Grafo::grafoModificado, this, &MainWindow::actualizarResumenGrafo);
@@ -508,7 +575,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         const Nodo *nodo = sim->getGrafo()->buscarNodo(id);
         const QString detalle = nodo != nullptr
             ? QStringLiteral("Nodo %1 · %2").arg(id).arg(nodo->getNombre())
-            : QStringLiteral("Pasa el cursor por un nodo");
+            : QString();
         ui->lblNodeFocus->setText(ui->lblNodeFocus->fontMetrics().elidedText(
             detalle, Qt::ElideRight, ui->lblNodeFocus->width()));
         ui->lblNodeFocus->setToolTip(detalle);
@@ -517,14 +584,66 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     connect(ui->btnReset, &QPushButton::clicked, this, &MainWindow::enReiniciarClicado);
     connect(ui->comboSpeed, &QComboBox::currentIndexChanged, this, &MainWindow::enVelocidadCambiada);
     connect(ui->comboTimeMode, &QComboBox::currentIndexChanged, this, &MainWindow::enModoTiempoCambiado);
-    connect(ui->comboEditMode, &QComboBox::currentIndexChanged, this, &MainWindow::enModoEdicionCambiado);
+    connect(ui->btnDriveMode, &QPushButton::clicked, this, [this] { enModoEdicionCambiado(0); });
+    connect(ui->btnEditMode, &QPushButton::clicked, this, [this] {
+        enModoEdicionCambiado(ui->comboEditMode->currentIndex() + 1);
+    });
+    connect(ui->comboEditMode, &QComboBox::currentIndexChanged, this, [this](int indice) {
+        if (ui->btnEditMode->isChecked())
+            enModoEdicionCambiado(indice + 1);
+    });
     connect(ui->chkWeights, &QCheckBox::toggled, this, &MainWindow::enMostrarPesosCambiado);
+    const auto enfocarFila = [this](int fila, int) {
+        if (fila < 0 || fila >= sim->getCantidadTaxis())
+            return;
+        const Taxi *taxi = sim->getTaxi(fila);
+        const int indice = ui->comboMapTaxi->findData(taxi->getId());
+        if (indice >= 0)
+            ui->comboMapTaxi->setCurrentIndex(indice);
+    };
+    connect(ui->tableTaxis, &QTableWidget::cellClicked, this, enfocarFila);
+    connect(ui->tableTaxis, &QTableWidget::cellActivated, this, enfocarFila);
+    connect(ui->comboMapTaxi, &QComboBox::currentIndexChanged, this, [this] {
+        temporizadorAviso.stop();
+        mapaWidget->setTaxiEnFoco(ui->comboMapTaxi->currentData().toInt());
+        actualizarEstadoSimulacion();
+    });
 
     connect(mapaWidget, &MapaWidget::nodoClicado, this, &MainWindow::enNodoClicado);
     connect(mapaWidget, &MapaWidget::espacioVacioClicado, this, &MainWindow::enEspacioVacioClicado);
     connect(mapaWidget, &MapaWidget::cancelarSolicitado, this, &MainWindow::enCancelarClicado);
 
     connect(sim, &Simulacion::mensajeEvento, this, &MainWindow::agregarEvento);
+    temporizadorAviso.setSingleShot(true);
+    connect(&temporizadorAviso, &QTimer::timeout, this, &MainWindow::actualizarEstadoSimulacion);
+    connect(sim, &Simulacion::pasajeroRecogido, this, [this](int idTaxi, int origen, int destino) {
+        if (modoEdicion != 0 || taxiConAviso()->getId() != idTaxi)
+            return;
+        const Nodo *desde = sim->getGrafo()->buscarNodo(origen);
+        const Nodo *hasta = sim->getGrafo()->buscarNodo(destino);
+        if (desde == nullptr || hasta == nullptr)
+            return;
+        llegadaManualReciente = false;
+        avisoTrayecto = QStringLiteral("Recogida en %1 · destino: %2").arg(desde->getNombre(), hasta->getNombre());
+        temporizadorAviso.start(4200);
+        actualizarEstadoSimulacion();
+    });
+    connect(sim, &Simulacion::carreraCompletada, this, [this](int idTaxi, QPointF, double tarifa, QColor) {
+        const Taxi *taxi = taxiConAviso();
+        if (modoEdicion != 0 || taxi->getId() != idTaxi)
+            return;
+        const Nodo *destino = sim->getGrafo()->buscarNodo(taxi->getNodoActual());
+        if (destino == nullptr)
+            return;
+        llegadaManualReciente = taxi->esManual();
+        avisoTrayecto = QStringLiteral("Llegada a %1 · +%2").arg(destino->getNombre(), Grafo::formatearPesos(tarifa));
+        temporizadorAviso.start(4200);
+        actualizarEstadoSimulacion();
+    });
+    connect(sim, &Simulacion::reinicioCompletado, this, [this] {
+        temporizadorAviso.stop();
+        actualizarTextoAyudaEdicion();
+    });
     connect(sim, &Simulacion::reinicioCompletado, this, &MainWindow::configurarTablas);
     connect(sim, &Simulacion::pausaCambiada, this, &MainWindow::actualizarBotonPausa);
 

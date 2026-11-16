@@ -25,9 +25,11 @@ private:
     QVariantAnimation animacionNodo;
     double oscuridad;
     int nodoBajoMouse;
+    QPointF posicionCursorMapa;
     int nodoPendiente;
     bool modoConducir;
     bool mostrarPesos;
+    int taxiEnFoco = -1;
     QVector<TextoFlotante> textosFlotantes;
 
     static QFont fuentePixel(int px, bool negrita = false);
@@ -40,8 +42,10 @@ private:
                                      QFont fuente, QColor relleno, double grosorBorde = 3.5);
 
     QTransform transformacionVista() const;
+    int nodoInteractivo(QPointF posMapa) const;
 
     QPointF posicionDibujoTaxi(const Taxi *taxi) const;
+    bool mostrarRutaDelTaxi(const Taxi *taxi) const;
 
     void dibujarMundo(QPainter &p, bool esMinimapa);
 
@@ -87,6 +91,7 @@ public:
     void setNodoPendiente(int idNodo);
     void setModoConducir(bool activo);
     void setMostrarPesos(bool mostrar);
+    void setTaxiEnFoco(int idTaxi);
 
 signals:
     void nodoClicado(int idNodo);

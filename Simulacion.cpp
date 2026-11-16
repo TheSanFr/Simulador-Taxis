@@ -135,7 +135,7 @@ void Simulacion::construirCiudadInicial()
     agregarManzana(18, 19, 24, 23, "Parque");
     agregarManzana(2, 3, 8, 7, "Edificios");
     agregarManzana(7, 8, 14, 13, "Parque");
-    agregarManzana(13, 14, 20, 19, "Edificios");
+    agregarManzana(13, 14, 20, 19, "Estadio");
     agregarManzana(19, 20, 25, 24, "Edificios");
     agregarManzana(3, 4, 9, 8, "Aeropuerto");
     agregarManzana(8, 9, 15, 14, "Edificios");
@@ -276,31 +276,22 @@ int Simulacion::buscarIndicePasajeroPorId(int idPasajero) const
     return -1;
 }
 
-int Simulacion::asignarPasajeroATaxi(Taxi *taxi)
+int Simulacion::elegirPasajeroObjetivo(Taxi *taxi) const
 {
-    int mejorIdx = -1;
+    int mejorId = -1;
     double mejorCosto = 999999.0;
 
-    for (int i = 0; i < pasajeros.size(); i++)
+    for (const Pasajero &pasajero : pasajeros)
     {
-        if (pasajeros[i].estaReservado())
-        {
-            continue;
-        }
-        ResultadoRuta r = taxi->calcularRuta(grafo, taxi->getNodoActual(), pasajeros[i].getOrigen());
+        ResultadoRuta r = taxi->calcularRuta(grafo, taxi->getNodoActual(), pasajero.getOrigen());
         if (r.getEncontrada() && r.getTiempoPonderado() < mejorCosto)
         {
             mejorCosto = r.getTiempoPonderado();
-            mejorIdx = i;
+            mejorId = pasajero.getId();
         }
     }
 
-    if (mejorIdx >= 0)
-    {
-        pasajeros[mejorIdx].setIdTaxiAsignado(taxi->getId());
-        return pasajeros[mejorIdx].getId();
-    }
-    return -1;
+    return mejorId;
 }
 
 void Simulacion::revisarParadaTaxi(Taxi *taxi)
@@ -323,8 +314,7 @@ void Simulacion::revisarParadaTaxi(Taxi *taxi)
         for (int i = 0; i < pasajeros.size(); i++)
         {
             const Pasajero &p = pasajeros[i];
-            if (p.getOrigen() == taxi->getNodoActual()
-                && (!p.estaReservado() || p.getIdTaxiAsignado() == taxi->getId()))
+            if (p.getOrigen() == taxi->getNodoActual())
             {
                 int origen = p.getOrigen();
                 int destino = p.getDestino();
@@ -332,6 +322,12 @@ void Simulacion::revisarParadaTaxi(Taxi *taxi)
                 pasajeros.removeAt(i);
 
                 taxi->subirPasajero(destino, tarifa);
+                if (!taxi->esManual())
+                {
+                    // El viaje a bordo sustituye a cualquier trayecto de recogida pendiente.
+                    taxi->limpiarRuta();
+                }
+                emit pasajeroRecogido(taxi->getId(), origen, destino);
                 registrarEvento(
                     QStringLiteral("%1 (%2) recogió pasajero en %3 → %4 (tarifa %5)")
                         .arg(taxi->getNombre(), taxi->nombreAlgoritmo(),
@@ -365,7 +361,7 @@ void Simulacion::planificarRutaAutonoma(Taxi *taxi)
     int idx = buscarIndicePasajeroPorId(taxi->getIdPasajeroObjetivo());
     if (idx < 0)
     {
-        taxi->setIdPasajeroObjetivo(asignarPasajeroATaxi(taxi));
+        taxi->setIdPasajeroObjetivo(elegirPasajeroObjetivo(taxi));
         idx = buscarIndicePasajeroPorId(taxi->getIdPasajeroObjetivo());
         if (idx < 0)
         {
@@ -383,7 +379,6 @@ void Simulacion::planificarRutaAutonoma(Taxi *taxi)
         }
         else
         {
-            pasajeros[idx].setIdTaxiAsignado(-1);
             taxi->setIdPasajeroObjetivo(-1);
         }
     }
@@ -411,6 +406,14 @@ void Simulacion::actualizarTaxi(Taxi *taxi, double dt)
             taxi->setPosicion(grafo->buscarNodo(cercano)->getPosicion());
             taxi->limpiarRuta();
         }
+    }
+
+    const int objetivo = taxi->getIdPasajeroObjetivo();
+    if (objetivo >= 0 && buscarIndicePasajeroPorId(objetivo) < 0)
+    {
+        // Si otro taxi recogió al cliente, replanteamos la ruta desde este cruce.
+        taxi->setIdPasajeroObjetivo(-1);
+        taxi->limpiarRuta();
     }
 
     if (taxi->getCantidadRuta() == 0)
