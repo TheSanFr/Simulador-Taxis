@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TEXTO_FLOTANTE_H
+#define TEXTO_FLOTANTE_H
 
 #include <QColor>
 #include <QPointF>
@@ -21,3 +22,5 @@ public:
     double getEdad() const;
     void avanzarEdad(double dt);
 };
+
+#endif // TEXTO_FLOTANTE_H

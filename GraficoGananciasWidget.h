@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GRAFICO_GANANCIAS_WIDGET_H
+#define GRAFICO_GANANCIAS_WIDGET_H
 
 #include <QWidget>
 
@@ -31,3 +32,5 @@ public:
 
     void setSimulacion(Simulacion *nuevaSim);
 };
+
+#endif // GRAFICO_GANANCIAS_WIDGET_H

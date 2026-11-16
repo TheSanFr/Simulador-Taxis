@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PILA_H
+#define PILA_H
 
 class NodoPila;
 
@@ -20,3 +21,5 @@ public:
 
     void limpiar();
 };
+
+#endif // PILA_H

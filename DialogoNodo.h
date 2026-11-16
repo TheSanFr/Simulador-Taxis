@@ -1,4 +1,5 @@
-#pragma once
+#ifndef DIALOGO_NODO_H
+#define DIALOGO_NODO_H
 
 #include <QDialog>
 #include <QString>
@@ -22,3 +23,5 @@ public:
 
     QString getTipoNodo() const;
 };
+
+#endif // DIALOGO_NODO_H

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TAXI_BFS_H
+#define TAXI_BFS_H
 
 #include "Taxi.h"
 
@@ -11,3 +12,5 @@ public:
 
     ResultadoRuta calcularRuta(Grafo *grafo, int origen, int destino) override;
 };
+
+#endif // TAXI_BFS_H

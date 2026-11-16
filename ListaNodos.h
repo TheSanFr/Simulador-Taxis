@@ -1,4 +1,5 @@
-#pragma once
+#ifndef LISTA_NODOS_H
+#define LISTA_NODOS_H
 
 class ElementoNodo;
 class Nodo;
@@ -25,3 +26,5 @@ public:
 
     void limpiar();
 };
+
+#endif // LISTA_NODOS_H

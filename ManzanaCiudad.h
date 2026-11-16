@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MANZANA_CIUDAD_H
+#define MANZANA_CIUDAD_H
 
 #include <QPolygonF>
 #include <QString>
@@ -15,3 +16,5 @@ public:
     QPolygonF getPoligono() const;
     QString getTipo() const;
 };
+
+#endif // MANZANA_CIUDAD_H

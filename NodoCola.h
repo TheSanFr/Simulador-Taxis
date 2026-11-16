@@ -1,4 +1,5 @@
-#pragma once
+#ifndef NODO_COLA_H
+#define NODO_COLA_H
 
 class NodoCola
 {
@@ -13,3 +14,5 @@ public:
     NodoCola *getSiguiente() const;
     void setSiguiente(NodoCola *siguiente);
 };
+
+#endif // NODO_COLA_H

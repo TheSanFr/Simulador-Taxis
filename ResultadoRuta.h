@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RESULTADO_RUTA_H
+#define RESULTADO_RUTA_H
 
 class ResultadoRuta
 {
@@ -28,3 +29,5 @@ public:
 
     void agregarNodoAlCamino(int idNodo);
 };
+
+#endif // RESULTADO_RUTA_H

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef GRAFO_H
+#define GRAFO_H
 
 #include <QObject>
 #include <QPointF>
@@ -97,3 +98,5 @@ public:
 signals:
     void grafoModificado();
 };
+
+#endif // GRAFO_H

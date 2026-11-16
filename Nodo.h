@@ -1,4 +1,5 @@
-#pragma once
+#ifndef NODO_H
+#define NODO_H
 
 #include <QPointF>
 #include <QString>
@@ -28,3 +29,5 @@ public:
     void setY(int y);
     void setTipo(QString tipo);
 };
+
+#endif // NODO_H

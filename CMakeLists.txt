@@ -75,6 +75,11 @@ if(MSVC)
     target_compile_options(TaxiGraph PRIVATE /utf-8)
 endif()
 
+qt_add_resources(TaxiGraph "interfaz"
+    PREFIX "/"
+    FILES interfaz.qss
+)
+
 target_link_libraries(TaxiGraph PRIVATE Qt6::Widgets Qt6::Charts)
 
 set_target_properties(TaxiGraph PROPERTIES

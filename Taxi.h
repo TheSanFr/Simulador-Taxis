@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TAXI_H
+#define TAXI_H
 
 #include <QColor>
 #include <QPointF>
@@ -95,3 +96,5 @@ public:
 
     QString textoEstado(Grafo *grafo) const;
 };
+
+#endif // TAXI_H

@@ -52,9 +52,9 @@ void BarrasGananciasWidget::paintEvent(QPaintEvent *)
 {
     QPainter p(this);
     p.setRenderHint(QPainter::Antialiasing);
-    p.setPen(Qt::NoPen);
-    p.setBrush(QColor("#0c121b"));
-    p.drawRoundedRect(rect(), 10, 10);
+    p.setPen(QPen(QColor("#2b3a49"), 1));
+    p.setBrush(QColor("#131d28"));
+    p.drawRoundedRect(QRectF(rect()).adjusted(0.5, 0.5, -0.5, -0.5), 8, 8);
 
     if (sim == nullptr || sim->getCantidadTaxis() == 0)
     {
@@ -62,12 +62,11 @@ void BarrasGananciasWidget::paintEvent(QPaintEvent *)
     }
 
     int n = sim->getCantidadTaxis();
-    double margen = 12.0;
-    double anchoEtiqueta = 92.0;
+    double margen = 10.0;
+    double anchoEtiqueta = 86.0;
     double anchoValor = 98.0;
     double altoFila = (height() - 2 * margen) / n;
-    double altoBarra = altoFila - 8.0;
-    if (altoBarra > 24.0) altoBarra = 24.0;
+    double altoBarra = qMin(altoFila - 8.0, 12.0);
     double xPista = margen + anchoEtiqueta;
     double anchoPista = width() - 2 * margen - anchoEtiqueta - anchoValor;
     if (anchoPista < 40.0) anchoPista = 40.0;
@@ -83,7 +82,7 @@ void BarrasGananciasWidget::paintEvent(QPaintEvent *)
 
     QFont fuente = p.font();
     fuente.setPixelSize(13);
-    fuente.setBold(true);
+    fuente.setWeight(QFont::DemiBold);
     p.setFont(fuente);
 
     for (int i = 0; i < n; i++)
@@ -94,15 +93,15 @@ void BarrasGananciasWidget::paintEvent(QPaintEvent *)
 
         p.setPen(Qt::NoPen);
         p.setBrush(c);
-        p.drawEllipse(QPointF(margen + 6, cy), 5.5, 5.5);
-        p.setPen(QColor("#dce3ee"));
+        p.drawEllipse(QPointF(margen + 6, cy), 4.0, 4.0);
+        p.setPen(QColor("#e8eef4"));
         p.drawText(QRectF(margen + 18, cy - 11, anchoEtiqueta - 18, 22),
                    Qt::AlignVCenter | Qt::AlignLeft, taxi->getNombre());
 
         QRectF pista(xPista, cy - altoBarra / 2, anchoPista, altoBarra);
-        p.setPen(i == lider && mostrado[i] > 0 ? QPen(QColor("#ffd60a"), 1.5) : Qt::NoPen);
-        p.setBrush(QColor("#1a2434"));
-        p.drawRoundedRect(pista, 7, 7);
+        p.setPen(i == lider && mostrado[i] > 0 ? QPen(QColor("#ffd166"), 1.0) : Qt::NoPen);
+        p.setBrush(QColor("#263645"));
+        p.drawRoundedRect(pista, 5, 5);
 
         double fraccion = mostrado[i] / escala;
         if (fraccion < 0.0) fraccion = 0.0;
@@ -115,10 +114,10 @@ void BarrasGananciasWidget::paintEvent(QPaintEvent *)
             QRectF relleno(xPista, cy - altoBarra / 2, anchoRelleno, altoBarra);
             p.setPen(Qt::NoPen);
             p.setBrush(c);
-            p.drawRoundedRect(relleno, 7, 7);
+            p.drawRoundedRect(relleno, 5, 5);
         }
 
-        p.setPen(i == lider && mostrado[i] > 0 ? QColor("#ffd60a") : QColor("#f4f7fb"));
+        p.setPen(i == lider && mostrado[i] > 0 ? QColor("#ffd166") : QColor("#d7e2ec"));
         p.drawText(QRectF(width() - margen - anchoValor, cy - 11, anchoValor, 22),
                    Qt::AlignVCenter | Qt::AlignRight, Grafo::formatearPesos(mostrado[i]));
     }
@@ -132,7 +131,8 @@ BarrasGananciasWidget::BarrasGananciasWidget(QWidget *parent) : QWidget(parent)
         mostrado[i] = 0.0;
     }
     escala = 50000.0;
-    setMinimumHeight(250);
+    setMinimumHeight(190);
+    setMaximumHeight(248);
 }
 
 void BarrasGananciasWidget::setSimulacion(Simulacion *nuevaSim)

@@ -1,4 +1,5 @@
-#pragma once
+#ifndef MAIN_WINDOW_H
+#define MAIN_WINDOW_H
 
 #include <QColor>
 #include <QMainWindow>
@@ -49,6 +50,8 @@ private:
     void mostrarMensajeEstado(QString texto);
 
     void configurarPanelGuia();
+    void actualizarResumenGrafo();
+    void actualizarEstadoSimulacion();
 
 private slots:
     void enPausaCambiada(bool pausada);
@@ -82,3 +85,5 @@ public:
 
     ~MainWindow() override;
 };
+
+#endif // MAIN_WINDOW_H

@@ -5,6 +5,7 @@
 
 #include <QChart>
 #include <QChartView>
+#include <QFrame>
 #include <QColor>
 #include <QLegend>
 #include <QLineSeries>
@@ -92,27 +93,41 @@ GraficoGananciasWidget::GraficoGananciasWidget(QWidget *parent) : QWidget(parent
 
     grafico = new QChart();
     grafico->setTheme(QChart::ChartThemeDark);
-    grafico->setBackgroundBrush(QColor("#0c121b"));
+    grafico->setBackgroundBrush(QColor("#131d28"));
+    grafico->setBackgroundRoundness(9);
+    grafico->setPlotAreaBackgroundVisible(true);
+    grafico->setPlotAreaBackgroundBrush(QColor("#17222e"));
     grafico->setTitle(QStringLiteral("Ingresos acumulados por taxi"));
-    grafico->setTitleBrush(QColor("#ffd60a"));
-    grafico->legend()->setAlignment(Qt::AlignBottom);
+    grafico->setTitleBrush(QColor("#e8eef4"));
+    grafico->legend()->setLabelColor(QColor("#b8c8d8"));
+    grafico->legend()->setAlignment(Qt::AlignRight);
     grafico->setMargins(QMargins(4, 4, 4, 4));
 
     ejeX = new QValueAxis();
     ejeX->setTitleText(QStringLiteral("Tiempo simulado (s)"));
+    ejeX->setTickCount(5);
     ejeX->setLabelFormat("%.0f");
     ejeX->setRange(0, 90);
 
     ejeY = new QValueAxis();
+    ejeY->setTickCount(5);
     ejeY->setLabelFormat("%.0f");
     ejeY->setRange(0, 50000);
 
     grafico->addAxis(ejeX, Qt::AlignBottom);
     grafico->addAxis(ejeY, Qt::AlignLeft);
+    for (QValueAxis *eje : {ejeX, ejeY})
+    {
+        eje->setLabelsColor(QColor("#a5b4c3"));
+        eje->setGridLineColor(QColor("#2b3a49"));
+        eje->setLinePenColor(QColor("#526579"));
+        eje->setTitleBrush(QColor("#c5d2de"));
+    }
 
     vista = new QChartView(grafico, this);
     vista->setRenderHint(QPainter::Antialiasing);
-    vista->setBackgroundBrush(QColor("#0c121b"));
+    vista->setBackgroundBrush(QColor("#17222e"));
+    vista->setFrameShape(QFrame::NoFrame);
 
     QVBoxLayout *layout = new QVBoxLayout(this);
     layout->setContentsMargins(0, 0, 0, 0);

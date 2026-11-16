@@ -1,4 +1,5 @@
-#pragma once
+#ifndef COLA_H
+#define COLA_H
 
 class NodoCola;
 
@@ -21,3 +22,5 @@ public:
 
     void limpiar();
 };
+
+#endif // COLA_H

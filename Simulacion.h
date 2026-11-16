@@ -1,4 +1,5 @@
-#pragma once
+#ifndef SIMULACION_H
+#define SIMULACION_H
 
 #include <QColor>
 #include <QElapsedTimer>
@@ -113,3 +114,5 @@ signals:
     void mensajeEvento(QString texto, QColor color);
     void carreraCompletada(int idTaxi, QPointF posMapa, double tarifa, QColor color);
 };
+
+#endif // SIMULACION_H

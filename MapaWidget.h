@@ -1,11 +1,12 @@
-#pragma once
+#ifndef MAPA_WIDGET_H
+#define MAPA_WIDGET_H
 
 #include <QColor>
-#include <QElapsedTimer>
 #include <QFont>
 #include <QPointF>
 #include <QString>
 #include <QTransform>
+#include <QVariantAnimation>
 #include <QVector>
 #include <QWidget>
 
@@ -21,7 +22,7 @@ class MapaWidget : public QWidget
 
 private:
     Simulacion *sim;
-    QElapsedTimer relojAnimacion;
+    QVariantAnimation animacionNodo;
     double oscuridad;
     int nodoBajoMouse;
     int nodoPendiente;
@@ -60,9 +61,9 @@ private:
 
     void dibujarEfectosNocturnos(QPainter &p);
 
-    void dibujarHUD(QPainter &p);
 
     void dibujarMinimapa(QPainter &p);
+    void seleccionarNodoEnFoco(int id);
 
 private slots:
     void enCuadro(double dt);
@@ -89,6 +90,9 @@ public:
 
 signals:
     void nodoClicado(int idNodo);
+    void nodoEnFocoCambiado(int idNodo);
     void espacioVacioClicado(QPointF posMapa);
     void cancelarSolicitado();
 };
+
+#endif // MAPA_WIDGET_H

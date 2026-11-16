@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ARISTA_H
+#define ARISTA_H
 
 class Arista
 {
@@ -24,3 +25,5 @@ public:
     void setPesoInicial(double pesoInicial);
     void setEsAvenida(bool esAvenida);
 };
+
+#endif // ARISTA_H

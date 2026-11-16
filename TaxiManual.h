@@ -1,4 +1,5 @@
-#pragma once
+#ifndef TAXI_MANUAL_H
+#define TAXI_MANUAL_H
 
 #include "Taxi.h"
 
@@ -13,3 +14,5 @@ public:
 
     bool agregarNodoARuta(int idNodo, Grafo *grafo);
 };
+
+#endif // TAXI_MANUAL_H

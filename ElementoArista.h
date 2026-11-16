@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ELEMENTO_ARISTA_H
+#define ELEMENTO_ARISTA_H
 
 class Arista;
 
@@ -15,3 +16,5 @@ public:
     ElementoArista *getSiguiente() const;
     void setSiguiente(ElementoArista *siguiente);
 };
+
+#endif // ELEMENTO_ARISTA_H

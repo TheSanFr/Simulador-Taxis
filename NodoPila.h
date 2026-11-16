@@ -1,4 +1,5 @@
-#pragma once
+#ifndef NODO_PILA_H
+#define NODO_PILA_H
 
 class NodoPila
 {
@@ -13,3 +14,5 @@ public:
     NodoPila *getSiguiente() const;
     void setSiguiente(NodoPila *siguiente);
 };
+
+#endif // NODO_PILA_H

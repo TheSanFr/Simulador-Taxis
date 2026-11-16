@@ -1,4 +1,5 @@
-#pragma once
+#ifndef PASAJERO_H
+#define PASAJERO_H
 
 class Pasajero
 {
@@ -22,3 +23,5 @@ public:
     void setIdTaxiAsignado(int idTaxi);
     void setTarifa(double tarifa);
 };
+
+#endif // PASAJERO_H

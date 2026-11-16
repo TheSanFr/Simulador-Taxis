@@ -1,4 +1,5 @@
-#pragma once
+#ifndef BARRAS_GANANCIAS_WIDGET_H
+#define BARRAS_GANANCIAS_WIDGET_H
 
 #include <QWidget>
 
@@ -26,3 +27,5 @@ public:
 
     void setSimulacion(Simulacion *nuevaSim);
 };
+
+#endif // BARRAS_GANANCIAS_WIDGET_H

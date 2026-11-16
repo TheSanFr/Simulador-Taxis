@@ -1,4 +1,5 @@
-#pragma once
+#ifndef LISTA_ARISTAS_H
+#define LISTA_ARISTAS_H
 
 class Arista;
 class ElementoArista;
@@ -29,3 +30,5 @@ public:
 
     void limpiar();
 };
+
+#endif // LISTA_ARISTAS_H

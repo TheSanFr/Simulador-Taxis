@@ -1,4 +1,5 @@
-#pragma once
+#ifndef ELEMENTO_NODO_H
+#define ELEMENTO_NODO_H
 
 class Nodo;
 
@@ -15,3 +16,5 @@ public:
     ElementoNodo *getSiguiente() const;
     void setSiguiente(ElementoNodo *siguiente);
 };
+
+#endif // ELEMENTO_NODO_H

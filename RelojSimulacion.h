@@ -1,4 +1,5 @@
-#pragma once
+#ifndef RELOJ_SIMULACION_H
+#define RELOJ_SIMULACION_H
 
 #include <QString>
 
@@ -26,3 +27,5 @@ public:
 
     double oscuridad() const;
 };
+
+#endif // RELOJ_SIMULACION_H
