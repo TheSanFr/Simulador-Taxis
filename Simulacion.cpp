@@ -1,7 +1,10 @@
 #include "Simulacion.h"
 
+#include "Arista.h"
+#include "ElementoArista.h"
 #include "ElementoNodo.h"
 #include "Grafo.h"
+#include "ListaAristas.h"
 #include "ListaNodos.h"
 #include "Nodo.h"
 #include "ResultadoRuta.h"
@@ -11,7 +14,9 @@
 #include "TaxiDijkstra.h"
 #include "TaxiManual.h"
 
+#include <QHash>
 #include <QRandomGenerator>
+#include <QSet>
 #include <cmath>
 
 void Simulacion::agregarManzana(int n1, int n2, int n3, int n4, QString tipoManzana)
@@ -184,83 +189,70 @@ void Simulacion::crearTaxis()
 
 void Simulacion::generarPasajero()
 {
-    int candidatos[100];
-    int totalCandidatos = 0;
-
-    ElementoNodo *elem = grafo->getNodos()->getPrimero();
-    while (elem != nullptr)
+    QHash<int, QVector<int>> salidas;
+    for (const ElementoArista *elem = grafo->getAristas()->getPrimero();
+         elem != nullptr; elem = elem->getSiguiente())
     {
-        Nodo *n = elem->getNodo();
-        if (n != nullptr && grafo->tieneSalidas(n->getId()) && totalCandidatos < 100)
-        {
-            candidatos[totalCandidatos] = n->getId();
-            totalCandidatos++;
-        }
-        elem = elem->getSiguiente();
+        const Arista *arista = elem->getArista();
+        salidas[arista->getOrigen()].append(arista->getDestino());
     }
 
-    if (totalCandidatos < 2)
+    QSet<int> ocupados;
+    for (const Pasajero &pasajero : pasajeros)
+        ocupados.insert(pasajero.getOrigen());
+
+    QVector<int> origenes;
+    for (const ElementoNodo *elem = grafo->getNodos()->getPrimero();
+         elem != nullptr; elem = elem->getSiguiente())
     {
+        const int id = elem->getNodo()->getId();
+        if (salidas.contains(id) && !ocupados.contains(id))
+            origenes.append(id);
+    }
+    if (origenes.isEmpty())
         return;
-    }
 
     QRandomGenerator &rng = *QRandomGenerator::global();
+    const int origen = origenes[rng.bounded(static_cast<int>(origenes.size()))];
 
-    for (int intento = 0; intento < 8; intento++)
+    // Recorrer salidas dirigidas incluye los destinos alcanzables que no tienen salida.
+    QVector<int> alcanzables{origen};
+    QSet<int> visitados{origen};
+    for (qsizetype i = 0; i < alcanzables.size(); ++i)
     {
-        int origen = candidatos[rng.bounded(totalCandidatos)];
-
-        bool ocupado = false;
-        for (int i = 0; i < pasajeros.size(); i++)
-        {
-            if (pasajeros[i].getOrigen() == origen)
-            {
-                ocupado = true;
-            }
-        }
-        if (ocupado)
-        {
+        const auto aristas = salidas.constFind(alcanzables[i]);
+        if (aristas == salidas.constEnd())
             continue;
-        }
-
-        double probabilidades[100];
-        double sumaPesos = 0.0;
-        for (int i = 0; i < totalCandidatos; i++)
+        for (int siguiente : aristas.value())
         {
-            int id = candidatos[i];
-            double prob = 1.0;
-            if (id == origen)
+            if (!visitados.contains(siguiente))
             {
-                prob = 0.0;
-            }
-            else if (grafo->buscarNodo(id)->getTipo() == "Turistico")
-            {
-                prob = 3.0; // Mayor probabilidad de ser destino de un usuario
-            }
-            probabilidades[i] = prob;
-            sumaPesos += prob;
-        }
-
-        double eleccion = rng.generateDouble() * sumaPesos;
-        int destino = -1;
-        for (int i = 0; i < totalCandidatos; i++)
-        {
-            eleccion -= probabilidades[i];
-            if (eleccion <= 0.0 && probabilidades[i] > 0.0)
-            {
-                destino = candidatos[i];
-                break;
+                visitados.insert(siguiente);
+                alcanzables.append(siguiente);
             }
         }
+    }
 
-        if (destino < 0 || !grafo->buscarRutaDijkstra(origen, destino).getEncontrada())
-        {
-            continue;
-        }
-
-        double tarifa = cotizarCarrera(origen, destino);
-        pasajeros.append(Pasajero(siguienteIdPasajero++, origen, destino, tarifa));
+    const auto pesoDestino = [this](int id) {
+        return grafo->buscarNodo(id)->getTipo() == QStringLiteral("Turistico") ? 3 : 1;
+    };
+    int sumaPesos = 0;
+    for (qsizetype i = 1; i < alcanzables.size(); ++i)
+        sumaPesos += pesoDestino(alcanzables[i]);
+    if (sumaPesos == 0)
         return;
+
+    int eleccion = rng.bounded(sumaPesos);
+    for (qsizetype i = 1; i < alcanzables.size(); ++i)
+    {
+        const int destino = alcanzables[i];
+        eleccion -= pesoDestino(destino);
+        if (eleccion < 0)
+        {
+            const double tarifa = cotizarCarrera(origen, destino);
+            pasajeros.append(Pasajero(siguienteIdPasajero++, origen, destino, tarifa));
+            return;
+        }
     }
 }
 
@@ -303,10 +295,11 @@ void Simulacion::revisarParadaTaxi(Taxi *taxi)
         taxi->bajarPasajero();
 
         emit carreraCompletada(taxi->getId(), taxi->getPosicion(), tarifa, taxi->getColor());
-        registrarEvento(QStringLiteral("%1 (%2) completó carrera en %3: +%4")
-                            .arg(taxi->getNombre(), taxi->nombreAlgoritmo(),
-                                 nombreNodo(nodoDest), Grafo::formatearPesos(tarifa)),
-                        taxi->getColor());
+        registrarEvento(QStringLiteral("Viajes"),
+                        taxi->esManual() ? QStringLiteral("Completaste una carrera")
+                                         : QStringLiteral("%1 completó una carrera").arg(taxi->getNombre()),
+                        QStringLiteral("Llegada a %1 · +%2").arg(nombreNodo(nodoDest), Grafo::formatearPesos(tarifa)),
+                        taxi->getId(), nodoDest);
     }
 
     if (!taxi->getLlevaPasajero())
@@ -328,12 +321,12 @@ void Simulacion::revisarParadaTaxi(Taxi *taxi)
                     taxi->limpiarRuta();
                 }
                 emit pasajeroRecogido(taxi->getId(), origen, destino);
-                registrarEvento(
-                    QStringLiteral("%1 (%2) recogió pasajero en %3 → %4 (tarifa %5)")
-                        .arg(taxi->getNombre(), taxi->nombreAlgoritmo(),
-                             nombreNodo(origen), nombreNodo(destino),
-                             Grafo::formatearPesos(tarifa)),
-                    taxi->getColor());
+                registrarEvento(QStringLiteral("Viajes"),
+                                taxi->esManual() ? QStringLiteral("Recogiste a un pasajero")
+                                                 : QStringLiteral("%1 recogió a un pasajero").arg(taxi->getNombre()),
+                                QStringLiteral("%1 → %2 · tarifa %3")
+                                    .arg(nombreNodo(origen), nombreNodo(destino), Grafo::formatearPesos(tarifa)),
+                                taxi->getId(), origen);
                 break;
             }
         }
@@ -496,17 +489,18 @@ void Simulacion::actualizarPeriodo(bool silencioso)
 
     if (p == "HoraPico")
     {
-        registrarEvento(QStringLiteral("HORA PICO: ponderaciones mayores en las aristas (×1.8)."),
-                        QColor(255, 99, 99));
+        registrarEvento(QStringLiteral("Tráfico"), QStringLiteral("Comenzó la hora pico"),
+                        QStringLiteral("El peso efectivo de las calles aumenta ×1,8."));
     }
     else if (p == "Nocturno")
     {
-        registrarEvento(QStringLiteral("MODO NOCTURNO: recargo de +$ 2,000 por carrera."),
-                        QColor(167, 139, 250));
+        registrarEvento(QStringLiteral("Tráfico"), QStringLiteral("Comenzó el período nocturno"),
+                        QStringLiteral("Las nuevas recogidas tienen un recargo de $2.000."));
     }
     else
     {
-        registrarEvento(QStringLiteral("Modo normal activado."), QColor(74, 222, 128));
+        registrarEvento(QStringLiteral("Tráfico"), QStringLiteral("Volvió el tránsito normal"),
+                        QStringLiteral("Se aplican los pesos habituales de cada calle."));
     }
 }
 
@@ -516,9 +510,10 @@ QString Simulacion::nombreNodo(int id) const
     return (n != nullptr) ? n->getNombre() : QStringLiteral("?");
 }
 
-void Simulacion::registrarEvento(QString texto, QColor color)
+void Simulacion::registrarEvento(QString categoria, QString titulo, QString detalle,
+                                int idTaxi, int idNodo)
 {
-    emit mensajeEvento(QStringLiteral("[%1] %2").arg(reloj.textoHora(), texto), color);
+    emit eventoOcurrido(reloj.textoHora(), categoria, titulo, detalle, idTaxi, idNodo);
 }
 
 void Simulacion::enTickReloj()
@@ -627,6 +622,7 @@ void Simulacion::iniciar()
 {
     relojCuadro.start();
     temporizador.start();
+    registrarEvento(QStringLiteral("Sesión"), QStringLiteral("Simulación iniciada"), {});
 }
 
 bool Simulacion::estaPausada() const
@@ -662,6 +658,7 @@ void Simulacion::reiniciar()
     siguienteIdPasajero = 1;
     tiempoSimulado = 0.0;
     acumuladorMuestra = 0.0;
+    cuentaRegresivaPasajero = 0.0;
     reloj.reiniciar();
     crearTaxis();
     actualizarPeriodo(true);
@@ -670,7 +667,7 @@ void Simulacion::reiniciar()
         generarPasajero();
     }
     emit reinicioCompletado();
-    registrarEvento(QStringLiteral("Simulación reiniciada."), QColor(250, 204, 21));
+    registrarEvento(QStringLiteral("Sesión"), QStringLiteral("Simulación reiniciada"), {});
 }
 
 double Simulacion::cotizarCarrera(int origen, int destino) const

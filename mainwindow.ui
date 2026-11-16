@@ -369,6 +369,33 @@
             </widget>
            </item>
            <item>
+            <widget class="QComboBox" name="comboSentidoCalle">
+             <property name="accessibleName">
+              <string>Sentido de la calle</string>
+             </property>
+             <item>
+              <property name="text">
+               <string>Doble sentido</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Un sentido</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btnConstruirCalle">
+             <property name="text">
+              <string>Construir</string>
+             </property>
+             <property name="toolTip">
+              <string>Confirma la calle y los cruces de la vista previa. Atajo: Enter.</string>
+             </property>
+            </widget>
+           </item>
+           <item>
             <widget class="QCheckBox" name="chkWeights">
              <property name="text">
               <string>Mostrar pesos</string>
@@ -719,8 +746,34 @@
              <number>4</number>
             </property>
             <item>
-             <widget class="QTextEdit" name="txtLog">
-              <property name="readOnly">
+             <widget class="QComboBox" name="comboFiltroEventos">
+              <property name="accessibleName">
+               <string>Filtrar eventos</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QListWidget" name="listaEventos">
+              <property name="accessibleName">
+               <string>Historial de eventos</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="horizontalScrollBarPolicy">
+               <enum>Qt::ScrollBarAlwaysOff</enum>
+              </property>
+              <property name="verticalScrollMode">
+               <enum>QAbstractItemView::ScrollPerPixel</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblEventosVacio">
+              <property name="text">
+               <string>Todavía no hay eventos en esta vista.</string>
+              </property>
+              <property name="wordWrap">
                <bool>true</bool>
               </property>
              </widget>

@@ -108,6 +108,11 @@ QPushButton#btnReset {
 QPushButton#btnReset:hover {
     background: #343e40;
 }
+QPushButton#btnConstruirCalle:enabled {
+    background: #36352c;
+    border-color: #85734c;
+    color: #ffe5a7;
+}
 QPushButton#btnPause, QDialogButtonBox QPushButton:default {
     background: #ffd166;
     border-color: #ffd166;
@@ -208,11 +213,50 @@ QHeaderView::section {
     font-weight: 600;
 }
 QTextEdit, QTextBrowser {
-    background: #131d28;
-    border: 1px solid #2b3a49;
-    border-radius: 4px;
+    background: #1b2124;
+    border: 1px solid #374042;
+    border-radius: 5px;
     color: #d9e4ee;
     padding: 8px;
+}
+QScrollBar:vertical {
+    background: transparent;
+    border: 0;
+    width: 8px;
+}
+QScrollBar::handle:vertical {
+    background: #515c5d;
+    border-radius: 4px;
+    min-height: 28px;
+}
+QScrollBar::handle:vertical:hover {
+    background: #768582;
+}
+QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+    height: 0;
+}
+QScrollBar::add-page:vertical, QScrollBar::sub-page:vertical {
+    background: transparent;
+}
+QListWidget#listaEventos {
+    background: #20262a;
+    border: 0;
+    outline: none;
+}
+QListWidget#listaEventos::item {
+    padding: 9px 8px;
+    border-bottom: 1px solid #374042;
+}
+QListWidget#listaEventos::item:hover {
+    background: #293235;
+}
+QListWidget#listaEventos::item:selected {
+    background: #353a32;
+    color: #fff0cc;
+}
+QLabel#lblEventosVacio {
+    color: #b3bdbb;
+    padding: 12px 8px;
 }
 QSplitter::handle {
     background: #151a1d;

@@ -6,6 +6,7 @@
 #include <QPointF>
 #include <QString>
 #include <QTimer>
+#include <QVector>
 
 class BarrasGananciasWidget;
 class GraficoGananciasWidget;
@@ -41,10 +42,23 @@ private:
     */
     int modoEdicion;
     int nodoSeleccionadoEdicion;
+    int destinoEdicion = -1;
+    bool pausaAntesDeEditar = false;
     QTimer temporizadorTablas;
     QTimer temporizadorAviso;
     QString avisoTrayecto;
     bool llegadaManualReciente = false;
+
+    struct Evento
+    {
+        QString hora;
+        QString categoria;
+        QString titulo;
+        QString detalle;
+        int idTaxi;
+        int idNodo;
+    };
+    QVector<Evento> eventos;
 
     const Taxi *taxiObservado() const;
     const Taxi *taxiConAviso() const;
@@ -53,8 +67,17 @@ private:
                              QColor color, Qt::Alignment alineacion);
 
     void actualizarTextoAyudaEdicion();
+    void limpiarSeleccionEdicion();
+    void confirmarCalle();
+    bool tramoEnUso(int origen, int destino) const;
+    QString motivoNodoEnUso(int idNodo) const;
+    bool conservarViajesAlEliminar(int nodo, int extremoA, int extremoB) const;
 
     void mostrarMensajeEstado(QString texto);
+    void registrarCambioMapa(QString titulo, QString detalle, int idNodo);
+    bool mostrarEvento(const Evento &evento) const;
+    void insertarEvento(const Evento &evento);
+    void actualizarEventos();
 
     void configurarPanelGuia();
     void actualizarResumenGrafo();
@@ -81,7 +104,7 @@ private slots:
 
     void enNodoClicado(int idNodo);
 
-    void agregarEvento(QString texto, QColor color);
+    void agregarEvento(QString hora, QString categoria, QString titulo, QString detalle, int idTaxi, int idNodo);
 
     void configurarTablas();
 

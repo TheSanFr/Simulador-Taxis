@@ -72,7 +72,8 @@ private:
 
     QString nombreNodo(int id) const;
 
-    void registrarEvento(QString texto, QColor color);
+    void registrarEvento(QString categoria, QString titulo, QString detalle,
+                         int idTaxi = -1, int idNodo = -1);
 
 private slots:
     void enTickReloj();
@@ -111,7 +112,8 @@ signals:
     void muestraGrafico(double segundosSimulados);
     void reinicioCompletado();
     void pausaCambiada(bool pausada);
-    void mensajeEvento(QString texto, QColor color);
+    void eventoOcurrido(QString hora, QString categoria, QString titulo, QString detalle,
+                        int idTaxi, int idNodo);
     void pasajeroRecogido(int idTaxi, int origen, int destino);
     void carreraCompletada(int idTaxi, QPointF posMapa, double tarifa, QColor color);
 };

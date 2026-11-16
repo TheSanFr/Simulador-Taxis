@@ -6,9 +6,11 @@
 class RelojSimulacion
 {
 private:
-    double hora;
+    double segundosDelDia;
     int dia;
     int modo; // 0 = Automático, 1 = Normal, 2 = Nocturno, 3 = Hora Pico
+
+    int minutoActual() const;
 
 public:
     RelojSimulacion();
@@ -24,6 +26,7 @@ public:
     QString textoHora() const;
 
     QString periodoActual() const;
+    QString textoProximoPeriodo() const;
 
     double oscuridad() const;
 };

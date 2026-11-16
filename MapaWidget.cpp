@@ -19,6 +19,7 @@
 #include <QFontMetricsF>
 #include <QLineF>
 #include <QLinearGradient>
+#include <QLocale>
 #include <QMouseEvent>
 #include <QPaintEvent>
 #include <QPainter>
@@ -29,6 +30,7 @@
 #include <QSet>
 #include <QtMath>
 #include <cmath>
+#include <optional>
 
 namespace
 {
@@ -40,8 +42,25 @@ const QColor textoSecundario("#b3bfbc");
 const QColor colorManual("#ffd074");
 const QColor colorSeleccion("#79e7d0");
 const QColor colorTrafico("#ba6e68");
+const QColor colorEdicionInvalida("#fa9b8b");
 const QPointF desplazamientoCliente(-32, -24);
 const QPointF desplazamientoDestino(31, -23);
+
+double anchoConAcera(bool avenida)
+{
+    return avenida ? 42.0 : 30.0;
+}
+
+QPainterPath corredorDeTramo(QPointF origen, QPointF destino, double ancho)
+{
+    QPainterPath eje(origen);
+    eje.lineTo(destino);
+    QPainterPathStroker trazo;
+    trazo.setWidth(ancho);
+    trazo.setCapStyle(Qt::RoundCap);
+    trazo.setJoinStyle(Qt::RoundJoin);
+    return trazo.createStroke(eje);
+}
 }
 
 QFont MapaWidget::fuentePixel(int px, bool negrita)
@@ -135,6 +154,7 @@ void MapaWidget::dibujarMundo(QPainter &p, bool esMinimapa)
     dibujarEfectosNocturnos(p);
     if (!esMinimapa)
     {
+        dibujarVistaPreviaEdicion(p);
         dibujarRutas(p);
         if (mostrarPesos)
         {
@@ -147,6 +167,7 @@ void MapaWidget::dibujarMundo(QPainter &p, bool esMinimapa)
 
     if (!esMinimapa)
     {
+        dibujarConfirmacion(p);
         for (int i = 0; i < textosFlotantes.size(); i++)
         {
             const TextoFlotante &tf = textosFlotantes[i];
@@ -160,6 +181,43 @@ void MapaWidget::dibujarMundo(QPainter &p, bool esMinimapa)
                                  tf.getTexto(), fuentePixel(24, true), c, 3.5);
         }
     }
+}
+
+void MapaWidget::actualizarCorredorCalles()
+{
+    if (!corredorPendiente)
+        return;
+
+    corredorCalles = QPainterPath();
+    corredorCalles.setFillRule(Qt::WindingFill);
+    const Grafo *grafo = sim->getGrafo();
+    const ElementoArista *elemento = grafo->getAristas()->getPrimero();
+    while (elemento != nullptr)
+    {
+        const Arista *arista = elemento->getArista();
+        elemento = elemento->getSiguiente();
+        if (arista == nullptr)
+            continue;
+
+        const Nodo *origen = grafo->buscarNodo(arista->getOrigen());
+        const Nodo *destino = grafo->buscarNodo(arista->getDestino());
+        if (origen == nullptr || destino == nullptr)
+            continue;
+        if (arista->getOrigen() > arista->getDestino()
+            && grafo->existeAristaDirigida(arista->getDestino(), arista->getOrigen()))
+            continue;
+
+        corredorCalles.addPath(corredorDeTramo(origen->getPosicion(), destino->getPosicion(),
+                                              anchoConAcera(arista->getEsAvenida()) + 4.0));
+    }
+    QPainterPath superficieMapa;
+    superficieMapa.addRect(sim->getLimitesMapa());
+    terrenoDisponible = superficieMapa.subtracted(corredorCalles);
+    QPainterPath agua;
+    agua.addPolygon(sim->getPoligonoAgua());
+    agua.closeSubpath();
+    plataformaPuentes = agua.intersected(corredorCalles);
+    corredorPendiente = false;
 }
 
 void MapaWidget::dibujarEscenario(QPainter &p)
@@ -178,6 +236,9 @@ void MapaWidget::dibujarEscenario(QPainter &p)
     p.setBrush(ribera);
     p.drawPolygon(agua);
 
+    actualizarCorredorCalles();
+    p.save();
+    p.setClipPath(terrenoDisponible, Qt::IntersectClip);
     const QVector<ManzanaCiudad> &manzanas = sim->getManzanas();
     for (int i = 0; i < manzanas.size(); i++)
     {
@@ -212,20 +273,44 @@ void MapaWidget::dibujarEscenario(QPainter &p)
         p.setClipPath(recorte, Qt::IntersectClip);
         p.setPen(Qt::NoPen);
         const QPointF centro = interior.center();
-        const auto techo = [&p](QRectF volumen, const QColor &colorTecho) {
+        const auto techo = [&p, this](QRectF volumen, const QColor &colorTecho) {
+            if (corredorCalles.intersects(volumen.adjusted(-1, -1, 4, 5)))
+                return;
             p.setBrush(QColor(21, 27, 27, 142));
             p.drawRoundedRect(volumen.translated(4, 5), 3, 3);
             p.setBrush(colorTecho);
             p.drawRoundedRect(volumen, 3, 3);
         };
+        const auto ubicarHito = [&](const QPainterPath &huella) -> std::optional<QPointF> {
+            const QPointF ajustes[] = {QPointF(), QPointF(-29, 0), QPointF(29, 0),
+                                        QPointF(0, -22), QPointF(0, 22)};
+            for (const QPointF &ajuste : ajustes)
+            {
+                const QPointF posicion = centro + ajuste;
+                const QPainterPath ocupada = huella.translated(posicion);
+                if (recorte.contains(ocupada) && !corredorCalles.intersects(ocupada))
+                    return posicion;
+            }
+            return std::nullopt;
+        };
 
         if (aeropuerto)
         {
-            p.save();
-            p.translate(centro);
-            p.rotate(-18);
             const double largo = interior.width() * 0.78;
             const QRectF pista(-largo / 2, -17, largo, 34);
+            QPainterPath huella;
+            huella.addRect(pista);
+            QTransform rotacion;
+            rotacion.rotate(-18);
+            const auto posicion = ubicarHito(rotacion.map(huella));
+            if (!posicion)
+            {
+                p.restore();
+                continue;
+            }
+            p.save();
+            p.translate(*posicion);
+            p.rotate(-18);
             p.setBrush(QColor("#272d2e"));
             p.drawRoundedRect(pista, 4, 4);
             QPen eje(QColor("#929792"), 1.6, Qt::DashLine, Qt::FlatCap);
@@ -238,17 +323,25 @@ void MapaWidget::dibujarEscenario(QPainter &p)
         }
         else if (estadio)
         {
-            const QRectF gradas(centro.x() - 54, centro.y() - 35, 108, 70);
+            QPainterPath huella;
+            huella.addRoundedRect(QRectF(-54, -35, 108, 70), 35, 35);
+            const auto posicion = ubicarHito(huella);
+            if (!posicion)
+            {
+                p.restore();
+                continue;
+            }
+            const QRectF gradas(posicion->x() - 54, posicion->y() - 35, 108, 70);
             p.setBrush(QColor("#62665a"));
             p.drawRoundedRect(gradas, 35, 35);
             p.setBrush(QColor("#263933"));
             p.drawRoundedRect(gradas.adjusted(9, 8, -9, -8), 26, 26);
-            const QRectF cancha(centro.x() - 33, centro.y() - 18, 66, 36);
+            const QRectF cancha(posicion->x() - 33, posicion->y() - 18, 66, 36);
             p.setPen(QPen(QColor("#718575"), 1.4));
             p.setBrush(QColor("#48614f"));
             p.drawRect(cancha);
-            p.drawLine(QPointF(centro.x(), cancha.top()), QPointF(centro.x(), cancha.bottom()));
-            p.drawEllipse(centro, 6, 6);
+            p.drawLine(QPointF(posicion->x(), cancha.top()), QPointF(posicion->x(), cancha.bottom()));
+            p.drawEllipse(*posicion, 6, 6);
         }
         else if (parque)
         {
@@ -263,10 +356,13 @@ void MapaWidget::dibujarEscenario(QPainter &p)
                                        QPointF(41, 25), QPointF(22, 36), QPointF(53, 35)};
             for (const QPointF &arbol : arboles)
             {
+                const QPointF punto = centro + arbol;
+                if (corredorCalles.intersects(QRectF(punto - QPointF(10, 10), QSizeF(23, 24))))
+                    continue;
                 p.setBrush(QColor("#263d33"));
-                p.drawEllipse(centro + arbol + QPointF(3, 4), 10, 10);
+                p.drawEllipse(punto + QPointF(3, 4), 10, 10);
                 p.setBrush(QColor("#526e59"));
-                p.drawEllipse(centro + arbol, 9, 9);
+                p.drawEllipse(punto, 9, 9);
             }
         }
         else
@@ -295,6 +391,150 @@ void MapaWidget::dibujarEscenario(QPainter &p)
         }
         p.restore();
     }
+    p.restore();
+}
+
+void MapaWidget::dibujarVistaPreviaEdicion(QPainter &p)
+{
+    if (modoConducir || (herramientaEdicion != 1 && herramientaEdicion != 2)
+        || (!cursorEnMapa && destinoProvisional < 0))
+        return;
+
+    const Grafo *grafo = sim->getGrafo();
+    const QRectF limites = sim->getLimitesMapa();
+    const double escala = p.worldTransform().m11();
+    const auto rotulo = [&](QPointF referencia, const QString &texto, const QColor &acento) {
+        if (texto.isEmpty())
+            return;
+        const QFont f = fuentePixel(qBound(14, qRound(11.0 / escala), 25), true);
+        const QFontMetricsF medidas(f);
+        const double ancho = qMin(medidas.horizontalAdvance(texto) + 24.0, limites.width() - 24.0);
+        const double alto = medidas.height() + 10.0;
+        QPointF centro(qBound(limites.left() + ancho / 2 + 10.0, referencia.x(),
+                              limites.right() - ancho / 2 - 10.0),
+                       qBound(limites.top() + alto / 2 + 8.0, referencia.y(),
+                              limites.bottom() - alto / 2 - 8.0));
+        const QRectF caja(centro.x() - ancho / 2, centro.y() - alto / 2, ancho, alto);
+        p.setFont(f);
+        p.setPen(QPen(acento, 1.3));
+        p.setBrush(fondoPanel);
+        p.drawRoundedRect(caja, 8, 8);
+        p.setPen(textoPrincipal);
+        p.drawText(caja, Qt::AlignCenter, medidas.elidedText(texto, Qt::ElideRight, qFloor(ancho - 14.0)));
+    };
+
+    p.save();
+    if (herramientaEdicion == 1 && limites.contains(posicionCursorMapa))
+    {
+        if (const Nodo *nodo = grafo->buscarNodo(nodoBajoMouse))
+        {
+            rotulo(nodo->getPosicion() - QPointF(0, 38), QStringLiteral("Cruce existente"), textoSecundario);
+        }
+        else
+        {
+            const auto revision = grafo->previsualizarNodo(posicionCursorMapa);
+            const QPointF posicion = revision.valida ? revision.posicion : posicionCursorMapa;
+            const QColor acento = revision.valida ? colorSeleccion : colorEdicionInvalida;
+            QColor relleno = acento;
+            relleno.setAlpha(62);
+            p.setBrush(relleno);
+            p.setPen(QPen(acento, 3.0, Qt::DashLine));
+            p.drawEllipse(posicion, 15.0, 15.0);
+            p.setPen(Qt::NoPen);
+            p.setBrush(acento);
+            p.drawEllipse(posicion, 4.5, 4.5);
+            if (revision.divideCalle)
+            {
+                p.setPen(QPen(acento, 1.5, Qt::DotLine));
+                p.drawLine(posicionCursorMapa, posicion);
+            }
+            const QString texto = revision.valida
+                ? (revision.divideCalle ? QStringLiteral("Crear cruce aquí") : QStringLiteral("Agregar nodo aquí"))
+                : revision.motivo;
+            rotulo(posicion - QPointF(0, 39), texto, acento);
+        }
+    }
+    else if (herramientaEdicion == 2)
+    {
+        const Nodo *origen = grafo->buscarNodo(nodoPendiente);
+        const int idDestino = destinoProvisional >= 0 ? destinoProvisional : nodoBajoMouse;
+        const Nodo *destino = grafo->buscarNodo(idDestino);
+        if (origen != nullptr && (destino != nullptr || limites.contains(posicionCursorMapa)))
+        {
+            const QPointF desde = origen->getPosicion();
+            const QPointF hasta = destino != nullptr ? destino->getPosicion() : posicionCursorMapa;
+            const QLineF linea(desde, hasta);
+            const auto revision = destino != nullptr
+                ? grafo->previsualizarCalle(nodoPendiente, idDestino, calleDobleSentido) : Grafo::RevisionCalle();
+            const QColor acento = destino == nullptr ? textoSecundario
+                : revision.valida ? colorSeleccion : colorEdicionInvalida;
+            QColor relleno = acento;
+            relleno.setAlpha(revision.valida ? 74 : 38);
+            if (linea.length() > 1.0)
+            {
+                p.fillPath(corredorDeTramo(desde, hasta, anchoConAcera(false) + 4.0), relleno);
+                p.setPen(QPen(acento, revision.valida ? 3.0 : 2.0, Qt::DashLine, Qt::RoundCap));
+                p.drawLine(linea);
+            }
+            if (revision.valida && linea.length() >= 30.0)
+            {
+                const QPointF direccion = (hasta - desde) / linea.length();
+                const auto flecha = [&](QPointF punta, QPointF avance) {
+                    const QPointF lateral(-avance.y(), avance.x());
+                    p.drawPolyline(QPolygonF{punta - avance * 12 + lateral * 7,
+                                             punta, punta - avance * 12 - lateral * 7});
+                };
+                p.setPen(QPen(acento, 3.0, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+                flecha(linea.pointAt(calleDobleSentido ? 0.66 : 0.55), direccion);
+                if (calleDobleSentido)
+                    flecha(linea.pointAt(0.34), -direccion);
+            }
+            for (const QPointF &cruce : revision.cruces)
+            {
+                p.setPen(QPen(colorManual, 3.0));
+                p.setBrush(fondoPanel);
+                p.drawEllipse(cruce, 12.0, 12.0);
+                p.setPen(QPen(colorManual, 2.0));
+                p.drawLine(cruce - QPointF(5, 0), cruce + QPointF(5, 0));
+                p.drawLine(cruce - QPointF(0, 5), cruce + QPointF(0, 5));
+            }
+            if (destino != nullptr)
+            {
+                const QLocale locale(QLocale::Spanish, QLocale::Colombia);
+                const QString texto = revision.valida
+                    ? QStringLiteral("%1 · peso %2%3")
+                          .arg(calleDobleSentido ? QStringLiteral("Doble sentido") : QStringLiteral("Sentido único"),
+                               locale.toString(revision.peso, 'f', 1),
+                               revision.cruces.isEmpty()
+                                   ? QString()
+                                   : QStringLiteral(" · %1 %2").arg(revision.cruces.size()).arg(
+                                         revision.cruces.size() == 1 ? QStringLiteral("cruce") : QStringLiteral("cruces")))
+                    : revision.motivo;
+                const QPointF ancla = revision.cruces.isEmpty() ? linea.center() : revision.cruces.first();
+                rotulo(ancla - QPointF(0, revision.cruces.isEmpty() ? 27 : 39), texto, acento);
+            }
+        }
+    }
+    p.restore();
+}
+
+void MapaWidget::dibujarConfirmacion(QPainter &p)
+{
+    if (animacionConfirmacion.state() != QVariantAnimation::Running)
+        return;
+
+    const double avance = animacionConfirmacion.currentValue().toDouble();
+    QColor acento = colorSeleccion;
+    acento.setAlphaF(0.95 * (1.0 - avance));
+    p.save();
+    p.setBrush(Qt::NoBrush);
+    p.setPen(QPen(acento, confirmarTramo ? 6.0 - 3.5 * avance : 3.0,
+                  Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+    if (confirmarTramo)
+        p.drawLine(inicioConfirmacion, finConfirmacion);
+    else
+        p.drawEllipse(inicioConfirmacion, 17.0 + 26.0 * avance, 17.0 + 26.0 * avance);
+    p.restore();
 }
 
 void MapaWidget::dibujarCalles(QPainter &p, bool esMinimapa)
@@ -325,10 +565,11 @@ void MapaWidget::dibujarCalles(QPainter &p, bool esMinimapa)
         }
 
         bool av = arista->getEsAvenida();
-        p.setPen(QPen(QColor("#565d56"), av ? 42 : 30, Qt::SolidLine, Qt::RoundCap));
+        p.setPen(QPen(QColor("#565d56"), anchoConAcera(av), Qt::SolidLine, Qt::RoundCap));
         p.drawLine(na->getPosicion(), nb->getPosicion());
     }
 
+    p.fillPath(plataformaPuentes, QColor("#818f8c"));
     elem = g->getAristas()->getPrimero();
     while (elem != nullptr)
     {
@@ -988,7 +1229,10 @@ void MapaWidget::mouseMoveEvent(QMouseEvent *e)
         return;
     }
     posicionCursorMapa = transformacionVista().inverted().map(e->position());
+    cursorEnMapa = sim->getLimitesMapa().contains(posicionCursorMapa);
     seleccionarNodoEnFoco(nodoInteractivo(posicionCursorMapa));
+    if (!modoConducir)
+        update();
 }
 
 int MapaWidget::nodoInteractivo(QPointF posMapa) const
@@ -1018,7 +1262,9 @@ int MapaWidget::nodoInteractivo(QPointF posMapa) const
 
 void MapaWidget::leaveEvent(QEvent *)
 {
+    cursorEnMapa = false;
     seleccionarNodoEnFoco(-1);
+    update();
 }
 
 void MapaWidget::seleccionarNodoEnFoco(int id)
@@ -1058,14 +1304,30 @@ MapaWidget::MapaWidget(QWidget *parent) : QWidget(parent)
     animacionNodo.setEndValue(1.0);
     animacionNodo.setEasingCurve(QEasingCurve::OutCubic);
     connect(&animacionNodo, &QVariantAnimation::valueChanged, this, [this] { update(); });
+
+    animacionConfirmacion.setDuration(480);
+    animacionConfirmacion.setStartValue(0.0);
+    animacionConfirmacion.setEndValue(1.0);
+    animacionConfirmacion.setEasingCurve(QEasingCurve::OutCubic);
+    connect(&animacionConfirmacion, &QVariantAnimation::valueChanged, this, [this] { update(); });
 }
 
 void MapaWidget::setSimulacion(Simulacion *nuevaSim)
 {
     sim = nuevaSim;
+    corredorPendiente = true;
     connect(sim, &Simulacion::cuadroActualizado, this, &MapaWidget::enCuadro);
     connect(sim, &Simulacion::carreraCompletada, this, &MapaWidget::enCarreraCompletada);
+    connect(sim, &Simulacion::pasajeroRecogido, this, [this](int idTaxi, int origen, int) {
+        if (!modoConducir)
+            return;
+        const Taxi *manual = sim->getTaxiManual();
+        const int taxiVisible = taxiEnFoco >= 0 ? taxiEnFoco : (manual != nullptr ? manual->getId() : -1);
+        if (idTaxi == taxiVisible)
+            resaltarNodo(origen);
+    });
     connect(sim->getGrafo(), &Grafo::grafoModificado, this, [this] {
+        corredorPendiente = true;
         if (!sim->getGrafo()->tieneNodo(nodoBajoMouse))
         {
             seleccionarNodoEnFoco(-1);
@@ -1077,11 +1339,59 @@ void MapaWidget::setSimulacion(Simulacion *nuevaSim)
 void MapaWidget::setNodoPendiente(int idNodo)
 {
     nodoPendiente = idNodo;
+    update();
+}
+
+void MapaWidget::setHerramientaEdicion(int modo)
+{
+    herramientaEdicion = modo;
+    update();
+}
+
+void MapaWidget::setSentidoCalle(bool doble)
+{
+    calleDobleSentido = doble;
+    update();
+}
+
+void MapaWidget::setDestinoProvisional(int idDestino)
+{
+    destinoProvisional = idDestino;
+    update();
+}
+
+void MapaWidget::resaltarNodo(int idNodo)
+{
+    const Nodo *nodo = sim != nullptr ? sim->getGrafo()->buscarNodo(idNodo) : nullptr;
+    if (nodo == nullptr)
+        return;
+    inicioConfirmacion = nodo->getPosicion();
+    confirmarTramo = false;
+    animacionConfirmacion.stop();
+    animacionConfirmacion.start();
+}
+
+void MapaWidget::resaltarCalle(int origen, int destino)
+{
+    if (sim == nullptr)
+        return;
+    const Nodo *desde = sim->getGrafo()->buscarNodo(origen);
+    const Nodo *hasta = sim->getGrafo()->buscarNodo(destino);
+    if (desde == nullptr || hasta == nullptr)
+        return;
+    inicioConfirmacion = desde->getPosicion();
+    finConfirmacion = hasta->getPosicion();
+    confirmarTramo = true;
+    animacionConfirmacion.stop();
+    animacionConfirmacion.start();
 }
 
 void MapaWidget::setModoConducir(bool activo)
 {
     modoConducir = activo;
+    if (activo)
+        destinoProvisional = -1;
+    update();
 }
 
 void MapaWidget::setMostrarPesos(bool mostrar)

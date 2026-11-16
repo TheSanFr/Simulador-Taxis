@@ -3,6 +3,7 @@
 
 #include <QColor>
 #include <QFont>
+#include <QPainterPath>
 #include <QPointF>
 #include <QString>
 #include <QTransform>
@@ -23,10 +24,22 @@ class MapaWidget : public QWidget
 private:
     Simulacion *sim;
     QVariantAnimation animacionNodo;
+    QVariantAnimation animacionConfirmacion;
     double oscuridad;
     int nodoBajoMouse;
     QPointF posicionCursorMapa;
     int nodoPendiente;
+    int herramientaEdicion = 0;
+    int destinoProvisional = -1;
+    bool calleDobleSentido = true;
+    bool cursorEnMapa = false;
+    QPointF inicioConfirmacion;
+    QPointF finConfirmacion;
+    bool confirmarTramo = false;
+    QPainterPath corredorCalles;
+    QPainterPath terrenoDisponible;
+    QPainterPath plataformaPuentes;
+    bool corredorPendiente = true;
     bool modoConducir;
     bool mostrarPesos;
     int taxiEnFoco = -1;
@@ -50,6 +63,9 @@ private:
     void dibujarMundo(QPainter &p, bool esMinimapa);
 
     void dibujarEscenario(QPainter &p);
+    void actualizarCorredorCalles();
+    void dibujarVistaPreviaEdicion(QPainter &p);
+    void dibujarConfirmacion(QPainter &p);
 
     void dibujarCalles(QPainter &p, bool esMinimapa);
 
@@ -89,6 +105,11 @@ public:
     void setSimulacion(Simulacion *nuevaSim);
 
     void setNodoPendiente(int idNodo);
+    void setHerramientaEdicion(int modo);
+    void setSentidoCalle(bool doble);
+    void setDestinoProvisional(int idDestino);
+    void resaltarNodo(int idNodo);
+    void resaltarCalle(int origen, int destino);
     void setModoConducir(bool activo);
     void setMostrarPesos(bool mostrar);
     void setTaxiEnFoco(int idTaxi);

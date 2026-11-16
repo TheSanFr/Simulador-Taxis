@@ -3,6 +3,7 @@
 #include "Arista.h"
 #include "BarrasGananciasWidget.h"
 #include "DialogoNodo.h"
+#include "ElementoArista.h"
 #include "GraficoGananciasWidget.h"
 #include "Grafo.h"
 #include "ListaAristas.h"
@@ -26,17 +27,21 @@
 #include <QHeaderView>
 #include <QIcon>
 #include <QInputDialog>
+#include <QListWidget>
 #include <QMessageBox>
 #include <QPainter>
 #include <QPen>
 #include <QPixmap>
 #include <QPushButton>
+#include <QScrollBar>
+#include <QSet>
+#include <QShortcut>
 #include <QStatusBar>
 #include <QTabWidget>
 #include <QTableWidget>
 #include <QTableWidgetItem>
 #include <QTextBrowser>
-#include <QTextEdit>
+#include <QTextCursor>
 #include <QVector>
 #include <QWidget>
 
@@ -130,10 +135,40 @@ void MainWindow::actualizarTextoAyudaEdicion()
             texto = avisoTrayecto;
     }
     else if (modoEdicion == 1)
-        texto = QStringLiteral("Pulsa un espacio libre para ubicar el nodo.");
+        texto = QStringLiteral("Pulsa el mapa para colocar un nodo o crear un cruce sobre una calle.");
     else if (modoEdicion == 2)
-        texto = nodoSeleccionadoEdicion < 0 ? QStringLiteral("Selecciona el cruce de origen.")
-                                             : QStringLiteral("Selecciona el cruce de destino.");
+    {
+        bool puedeConstruir = false;
+        if (nodoSeleccionadoEdicion < 0)
+            texto = QStringLiteral("Selecciona el cruce de origen.");
+        else if (destinoEdicion < 0)
+            texto = QStringLiteral("Señala un destino para ver la calle. Haz clic para fijarlo.");
+        else
+        {
+            const Grafo::RevisionCalle revision = sim->getGrafo()->previsualizarCalle(
+                nodoSeleccionadoEdicion, destinoEdicion, ui->comboSentidoCalle->currentIndex() == 0);
+            if (!revision.valida)
+                texto = revision.motivo;
+            else
+            {
+                puedeConstruir = true;
+                texto = revision.cruces.isEmpty()
+                    ? QStringLiteral("Peso inicial %1 · Enter para construir.").arg(revision.peso, 0, 'f', 1)
+                    : QStringLiteral("Peso inicial %1 · cruces intermedios: %2 · Enter para construir.")
+                        .arg(revision.peso, 0, 'f', 1).arg(revision.cruces.size());
+            }
+            for (const auto &tramo : revision.tramosAfectados)
+            {
+                if (revision.valida && tramoEnUso(tramo.first, tramo.second))
+                {
+                    texto = QStringLiteral("Un taxi está cruzando la calle. Reanuda y vuelve a editar cuando termine.");
+                    puedeConstruir = false;
+                    break;
+                }
+            }
+        }
+        ui->btnConstruirCalle->setEnabled(puedeConstruir);
+    }
     else if (modoEdicion == 3)
         texto = QStringLiteral("Selecciona los dos extremos de la calle.");
     else if (modoEdicion == 4)
@@ -153,24 +188,38 @@ void MainWindow::mostrarMensajeEstado(QString texto)
 void MainWindow::configurarPanelGuia()
 {
     ui->txtInfo->setHtml(QStringLiteral(R"(
-<h3 style="color:#f4f7fa">Tu primera carrera</h3>
-<p>En Conducir, pulsa un cruce resaltado para avanzar. Las personas turquesa esperan en la calle.
-El primer taxi vacío que llega las recoge. Sigue la bandera para completar el viaje.
-Usa clic derecho para cancelar los tramos en cola.</p>
-<h3 style="color:#f4f7fa">Comparar algoritmos</h3>
-<p><b>BFS</b> busca una ruta con menos saltos. <b>DFS</b> explora una rama a fondo.
-<b>Dijkstra</b> busca una ruta de menor peso. Elige un taxi en Rutas o en la tabla de flota para ver su recorrido.</p>
-<h3 style="color:#f4f7fa">Reglas de la ciudad</h3>
+<style>
+h2 { color: #fff0cc; margin-top: 16px; margin-bottom: 5px; }
+p, li { color: #d9e4df; }
+</style>
+<h2>Tu primera carrera</h2>
+<ol>
+<li>En <b>Conducir</b>, busca a una persona turquesa. Señala un cruce resaltado para previsualizar el siguiente tramo y pulsa para avanzar.</li>
+<li>Al llegar, el primer taxi vacío recoge al pasajero. El panel cambia a <b>A bordo</b> y aparece una bandera.</li>
+<li>Sigue los cruces permitidos hasta la bandera. El mapa confirma la llegada y el panel registra el ingreso.</li>
+</ol>
+<p>Usa clic derecho para cancelar los tramos pendientes. En <b>Rutas</b> puedes destacar otro taxi sin dejar de conducir.</p>
+<h2>Editar la ciudad</h2>
+<p>En <b>Editar mapa</b>, la simulación se pone en pausa. Para crear una calle, elige el origen,
+señala el destino y revisa las flechas. Fija el destino con un clic. Elige el sentido y pulsa <b>Construir</b> o <b>Enter</b>.
+Usa <b>Esc</b> para cancelar.</p>
+<p>Si la calle atraviesa otra vía, la vista previa marca dónde se unirán.
+Con <b>Agregar nodo</b>, puedes colocar un punto libre o dividir una calle. Volver a <b>Conducir</b> restaura la pausa anterior.</p>
+<h2>Comparar taxis</h2>
+<p>Hay seis taxis autónomos y uno manual. <b>BFS</b> busca una ruta con menos saltos,
+<b>DFS</b> explora una rama a fondo y <b>Dijkstra</b> busca una ruta de menor peso.
+Selecciona una fila de la flota para ver ese recorrido en el mapa.</p>
+<h2>Tarifas y tráfico</h2>
 <ul>
-<li><b>Ciudad y Grafo:</b> Grafo dirigido y ponderado (<code>class Grafo</code> con <code>ListaNodos</code> y <code>ListaAristas</code>) donde las calles iniciales son de doble sentido (dos aristas dirigidas A→B y B→A) y es modificable por interfaz y por código.</li>
-<li><b>Taxis:</b> 6 autónomos (2 con <b>BFS</b>, 2 con <b>DFS</b>, 2 con <b>Dijkstra</b>) y 1 controlado por el usuario (<b>Tú</b>).</li>
-<li><b>Fórmula del Taxímetro (Mín. $8,100):</b><br>
-<code>Taxímetro = Base ($4,600) + Distancia (saltos) × $1,625 + Tiempo (ponderado) × $1,625</code></li>
-<li><b>Destinos Especiales:</b> Aeropuerto (+$8,600), Terminal (+$2,400), Sitios turísticos (+$2,000 y triple probabilidad de ser destino).</li>
-<li><b>Tráfico por uso:</b> Cada vez que un taxi cruza una arista, el peso de esa arista aumenta (+0.2).</li>
-<li><b>Modos:</b> Nocturno (+$2,000 de recargo) y Hora Pico (ponderaciones ×1.8).</li>
+<li>La ciudad es un grafo dirigido y ponderado. Las flechas indican el sentido y el peso representa el costo del tramo.</li>
+<li>La tarifa se fija al recoger al pasajero. Se calcula con base de $4.600, $1.625 por salto y
+$1.625 por unidad de tiempo ponderado, con un mínimo de $8.100 antes de recargos.</li>
+<li>Aeropuerto: +$8.600. Terminal: +$2.400. Turismo: +$2.000 y mayor probabilidad de ser destino.</li>
+<li>El uso eleva el peso de la calle. En hora pico el peso efectivo se multiplica por 1,8.
+El período nocturno añade $2.000 a la tarifa.</li>
 </ul>
 )"));
+    ui->txtInfo->moveCursor(QTextCursor::Start);
 }
 
 void MainWindow::enPausaCambiada(bool pausada)
@@ -205,14 +254,37 @@ void MainWindow::enModoTiempoCambiado(int indice)
 
 void MainWindow::enModoEdicionCambiado(int indice)
 {
+    const bool entrando = modoEdicion == 0 && indice != 0;
+    const bool saliendo = modoEdicion != 0 && indice == 0;
+    if (entrando)
+    {
+        pausaAntesDeEditar = sim->estaPausada();
+        sim->setPausada(true);
+    }
+    else if (saliendo)
+    {
+        sim->setPausada(pausaAntesDeEditar);
+    }
     modoEdicion = indice;
-    nodoSeleccionadoEdicion = -1;
-    mapaWidget->setNodoPendiente(-1);
+    limpiarSeleccionEdicion();
     mapaWidget->setModoConducir(modoEdicion == 0);
+    mapaWidget->setHerramientaEdicion(modoEdicion);
     ui->comboEditMode->setVisible(modoEdicion != 0);
+    ui->comboSentidoCalle->setVisible(modoEdicion == 2);
+    ui->btnConstruirCalle->setVisible(modoEdicion == 2);
+    ui->btnPause->setEnabled(modoEdicion == 0);
+    ui->btnPause->setToolTip(modoEdicion == 0 ? QString() : QStringLiteral("La ciudad está en pausa durante la edición."));
     ui->lblMapTaxi->setVisible(modoEdicion == 0);
     ui->comboMapTaxi->setVisible(modoEdicion == 0);
     actualizarTextoAyudaEdicion();
+}
+
+void MainWindow::limpiarSeleccionEdicion()
+{
+    nodoSeleccionadoEdicion = -1;
+    destinoEdicion = -1;
+    mapaWidget->setNodoPendiente(-1);
+    mapaWidget->setDestinoProvisional(-1);
 }
 
 void MainWindow::enReiniciarClicado()
@@ -237,8 +309,7 @@ void MainWindow::enCancelarClicado()
     }
     else
     {
-        nodoSeleccionadoEdicion = -1;
-        mapaWidget->setNodoPendiente(-1);
+        limpiarSeleccionEdicion();
         actualizarTextoAyudaEdicion();
     }
 }
@@ -250,21 +321,168 @@ void MainWindow::enEspacioVacioClicado(QPointF posMapa)
         return;
     }
 
-    bool estabaPausada = sim->estaPausada();
-    sim->setPausada(true);
+    Grafo *grafo = sim->getGrafo();
+    const Grafo::RevisionNodo revision = grafo->previsualizarNodo(posMapa);
+    if (!revision.valida)
+    {
+        mostrarMensajeEstado(revision.motivo);
+        return;
+    }
+    for (const auto &tramo : revision.tramosAfectados)
+    {
+        if (tramoEnUso(tramo.first, tramo.second))
+        {
+            mostrarMensajeEstado(QStringLiteral("Un taxi está cruzando esta calle. Reanuda y vuelve a intentarlo."));
+            return;
+        }
+    }
     DialogoNodo dialogo(this);
+    if (revision.divideCalle)
+        dialogo.setWindowTitle(QStringLiteral("Crear cruce en la calle"));
     if (dialogo.exec() == QDialog::Accepted)
     {
         QString nombre = dialogo.getNombreNodo();
         if (nombre.isEmpty())
         {
-            nombre = QStringLiteral("Nuevo nodo");
+            nombre = revision.divideCalle ? QStringLiteral("Nuevo cruce") : QStringLiteral("Nuevo nodo");
         }
-        sim->getGrafo()->agregarNodoNuevo(nombre, posMapa, dialogo.getTipoNodo());
-        mostrarMensajeEstado(
-            QStringLiteral("Nodo \"%1\" creado. Conéctalo usando \"Agregar calle\".").arg(nombre));
+        QString motivo;
+        const int id = grafo->crearNodoEditado(posMapa, nombre, dialogo.getTipoNodo(), revision.divideCalle, &motivo);
+        if (id < 0)
+        {
+            mostrarMensajeEstado(motivo);
+            return;
+        }
+        mapaWidget->resaltarNodo(id);
+        const QString titulo = revision.divideCalle ? QStringLiteral("Cruce creado") : QStringLiteral("Nodo creado");
+        registrarCambioMapa(titulo, nombre, id);
+        mostrarMensajeEstado(revision.divideCalle
+            ? QStringLiteral("Cruce %1 conectado a la calle.").arg(nombre)
+            : QStringLiteral("%1 está sin conectar. Usa Agregar calle.").arg(nombre));
     }
-    sim->setPausada(estabaPausada);
+}
+
+bool MainWindow::tramoEnUso(int origen, int destino) const
+{
+    for (int i = 0; i < sim->getCantidadTaxis(); ++i)
+    {
+        const Taxi *taxi = sim->getTaxi(i);
+        if (!taxi->getEnMovimiento())
+            continue;
+        const int desde = taxi->getNodoActual();
+        const int hasta = taxi->getNodoSiguiente();
+        if ((desde == origen && hasta == destino) || (desde == destino && hasta == origen))
+            return true;
+    }
+    return false;
+}
+
+QString MainWindow::motivoNodoEnUso(int idNodo) const
+{
+    for (int i = 0; i < sim->getCantidadTaxis(); ++i)
+    {
+        const Taxi *taxi = sim->getTaxi(i);
+        if (taxi->getNodoActual() == idNodo || (taxi->getEnMovimiento() && taxi->getNodoSiguiente() == idNodo))
+            return QStringLiteral("Hay un taxi en ese cruce o en un tramo que lo conecta.");
+        if (taxi->getLlevaPasajero() && taxi->getDestinoPasajeroABordo() == idNodo)
+            return QStringLiteral("Ese cruce es el destino de un pasajero a bordo.");
+    }
+    for (const Pasajero &pasajero : sim->getPasajerosEnEspera())
+    {
+        if (pasajero.getOrigen() == idNodo || pasajero.getDestino() == idNodo)
+            return QStringLiteral("Ese cruce forma parte del viaje de un pasajero en espera.");
+    }
+    return {};
+}
+
+bool MainWindow::conservarViajesAlEliminar(int nodo, int extremoA, int extremoB) const
+{
+    const Grafo *grafo = sim->getGrafo();
+    const auto alcanzable = [&](int inicio, int fin, bool excluir) {
+        QVector<int> pendientes{inicio};
+        QSet<int> visitados{inicio};
+        for (int i = 0; i < pendientes.size(); ++i)
+        {
+            const int actual = pendientes[i];
+            if (actual == fin)
+                return true;
+            for (const ElementoArista *elemento = grafo->getAristas()->getPrimero();
+                 elemento != nullptr; elemento = elemento->getSiguiente())
+            {
+                const Arista *arista = elemento->getArista();
+                if (arista->getOrigen() != actual)
+                    continue;
+                const int siguiente = arista->getDestino();
+                const bool tramoExcluido = (actual == extremoA && siguiente == extremoB)
+                    || (actual == extremoB && siguiente == extremoA);
+                if (excluir && (siguiente == nodo || tramoExcluido))
+                    continue;
+                if (!visitados.contains(siguiente))
+                {
+                    visitados.insert(siguiente);
+                    pendientes.append(siguiente);
+                }
+            }
+        }
+        return false;
+    };
+    const auto seConserva = [&](int inicio, int fin) {
+        return !alcanzable(inicio, fin, false) || alcanzable(inicio, fin, true);
+    };
+    for (const Pasajero &pasajero : sim->getPasajerosEnEspera())
+    {
+        if (!seConserva(pasajero.getOrigen(), pasajero.getDestino()))
+            return false;
+    }
+    for (int i = 0; i < sim->getCantidadTaxis(); ++i)
+    {
+        const Taxi *taxi = sim->getTaxi(i);
+        const int partida = taxi->getEnMovimiento() ? taxi->getNodoSiguiente() : taxi->getNodoActual();
+        if (taxi->getLlevaPasajero() && !seConserva(partida, taxi->getDestinoPasajeroABordo()))
+            return false;
+    }
+    return true;
+}
+
+void MainWindow::confirmarCalle()
+{
+    if (modoEdicion != 2 || nodoSeleccionadoEdicion < 0 || destinoEdicion < 0)
+        return;
+    Grafo *grafo = sim->getGrafo();
+    const int origen = nodoSeleccionadoEdicion;
+    const int destino = destinoEdicion;
+    const bool doble = ui->comboSentidoCalle->currentIndex() == 0;
+    const Grafo::RevisionCalle revision = grafo->previsualizarCalle(origen, destino, doble);
+    if (!revision.valida)
+    {
+        mostrarMensajeEstado(revision.motivo);
+        return;
+    }
+    for (const auto &tramo : revision.tramosAfectados)
+    {
+        if (tramoEnUso(tramo.first, tramo.second))
+        {
+            mostrarMensajeEstado(QStringLiteral("Un taxi está cruzando la calle. Reanuda y vuelve a intentarlo."));
+            return;
+        }
+    }
+    const QString enlace = QStringLiteral("%1 %2 %3")
+        .arg(grafo->buscarNodo(origen)->getNombre(), doble ? QStringLiteral("↔") : QStringLiteral("→"),
+             grafo->buscarNodo(destino)->getNombre());
+    QString motivo;
+    if (!grafo->crearCalleEditada(origen, destino, doble, true, &motivo))
+    {
+        mostrarMensajeEstado(motivo);
+        return;
+    }
+    limpiarSeleccionEdicion();
+    actualizarTextoAyudaEdicion();
+    mapaWidget->resaltarCalle(origen, destino);
+    QString detalle = QStringLiteral("%1 · peso %2").arg(enlace).arg(revision.peso, 0, 'f', 1);
+    if (!revision.cruces.isEmpty())
+        detalle += QStringLiteral(" · cruces intermedios: %1").arg(revision.cruces.size());
+    registrarCambioMapa(QStringLiteral("Calle creada"), detalle, destino);
+    mostrarMensajeEstado(QStringLiteral("Calle creada · %1").arg(enlace));
 }
 
 void MainWindow::enNodoClicado(int idNodo)
@@ -293,69 +511,76 @@ void MainWindow::enNodoClicado(int idNodo)
 
     if (modoEdicion == 4)
     {
-        bool estabaPausada = sim->estaPausada();
-        sim->setPausada(true);
+        const QString motivo = motivoNodoEnUso(idNodo);
+        if (!motivo.isEmpty())
+        {
+            mostrarMensajeEstado(motivo);
+            return;
+        }
+        if (!conservarViajesAlEliminar(idNodo, -1, -1))
+        {
+            mostrarMensajeEstado(QStringLiteral("Eliminar este cruce dejaría un viaje sin ruta."));
+            return;
+        }
         QString nombre = nodoClic->getNombre();
         if (QMessageBox::question(this, QStringLiteral("Eliminar nodo"),
                                   QStringLiteral("¿Eliminar \"%1\" y sus calles?").arg(nombre))
             == QMessageBox::Yes)
         {
-            g->eliminarNodo(idNodo);
-            mostrarMensajeEstado(QStringLiteral("Nodo \"%1\" eliminado.").arg(nombre));
+            if (g->eliminarNodo(idNodo))
+            {
+                registrarCambioMapa(QStringLiteral("Nodo eliminado"), nombre, -1);
+                mostrarMensajeEstado(QStringLiteral("Nodo \"%1\" eliminado.").arg(nombre));
+            }
         }
-        sim->setPausada(estabaPausada);
         return;
     }
 
     if (nodoSeleccionadoEdicion < 0)
     {
+        ui->statusbar->clearMessage();
         nodoSeleccionadoEdicion = idNodo;
         mapaWidget->setNodoPendiente(idNodo);
         actualizarTextoAyudaEdicion();
         return;
     }
 
+    if (modoEdicion == 2)
+    {
+        destinoEdicion = idNodo;
+        mapaWidget->setDestinoProvisional(idNodo);
+        ui->statusbar->clearMessage();
+        actualizarTextoAyudaEdicion();
+        return;
+    }
+
     int origen = nodoSeleccionadoEdicion;
     int destino = idNodo;
-    nodoSeleccionadoEdicion = -1;
-    mapaWidget->setNodoPendiente(-1);
+    limpiarSeleccionEdicion();
     actualizarTextoAyudaEdicion();
     if (origen == destino || g->buscarNodo(origen) == nullptr)
     {
         return;
     }
 
-    bool estabaPausada = sim->estaPausada();
-    sim->setPausada(true);
     QString nombreA = g->buscarNodo(origen)->getNombre();
     QString nombreB = g->buscarNodo(destino)->getNombre();
 
-    if (modoEdicion == 2)
+    if (modoEdicion == 3)
     {
-        QMessageBox cuadro(QMessageBox::Question, QStringLiteral("Nueva calle"),
-                           QStringLiteral("¿Cómo deseas conectar \"%1\" y \"%2\"?").arg(nombreA, nombreB),
-                           QMessageBox::NoButton, this);
-        QAbstractButton *btnDoble = cuadro.addButton(QStringLiteral("Doble sentido"), QMessageBox::AcceptRole);
-        QAbstractButton *btnUnico = cuadro.addButton(
-            QStringLiteral("Un sentido (%1 → %2)").arg(nombreA, nombreB), QMessageBox::AcceptRole);
-        cuadro.addButton(QStringLiteral("Cancelar"), QMessageBox::RejectRole);
-        cuadro.exec();
-
-        if (cuadro.clickedButton() == btnDoble)
+        if (tramoEnUso(origen, destino))
         {
-            g->agregarCalleDoble(origen, destino);
-            mostrarMensajeEstado(
-                QStringLiteral("Calle de doble sentido creada entre \"%1\" y \"%2\".").arg(nombreA, nombreB));
+            mostrarMensajeEstado(QStringLiteral("Hay un taxi en esta calle. Reanuda y vuelve a intentarlo."));
+            return;
         }
-        else if (cuadro.clickedButton() == btnUnico)
+        if (!conservarViajesAlEliminar(-1, origen, destino))
         {
-            g->agregarArista(origen, destino);
-            mostrarMensajeEstado(QStringLiteral("Arista dirigida creada: %1 → %2.").arg(nombreA, nombreB));
+            mostrarMensajeEstado(QStringLiteral("Eliminar esta calle dejaría un viaje sin ruta."));
+            return;
         }
-    }
-    else if (modoEdicion == 3)
-    {
         bool ok = g->eliminarCalle(origen, destino);
+        if (ok)
+            registrarCambioMapa(QStringLiteral("Calle eliminada"), QStringLiteral("%1 – %2").arg(nombreA, nombreB), origen);
         mostrarMensajeEstado(ok ? QStringLiteral("Calle eliminada entre \"%1\" y \"%2\".").arg(nombreA, nombreB)
                                 : QStringLiteral("No existe calle entre \"%1\" y \"%2\".").arg(nombreA, nombreB));
     }
@@ -376,18 +601,66 @@ void MainWindow::enNodoClicado(int idNodo)
             if (ok)
             {
                 g->cambiarPeso(origen, destino, nuevoPeso);
+                registrarCambioMapa(QStringLiteral("Peso de calle actualizado"),
+                    QStringLiteral("%1 – %2 · peso %3").arg(nombreA, nombreB).arg(nuevoPeso, 0, 'f', 1), origen);
                 mostrarMensajeEstado(QStringLiteral("Peso actualizado a %1.").arg(nuevoPeso));
             }
         }
     }
 
-    sim->setPausada(estabaPausada);
 }
 
-void MainWindow::agregarEvento(QString texto, QColor color)
+void MainWindow::registrarCambioMapa(QString titulo, QString detalle, int idNodo)
 {
-    ui->txtLog->append(QStringLiteral("<span style=\"color:%1\">%2</span>")
-                           .arg(color.name(), texto.toHtmlEscaped()));
+    agregarEvento(sim->getReloj().textoHora(), QStringLiteral("Mapa"), titulo, detalle, -1, idNodo);
+}
+
+bool MainWindow::mostrarEvento(const Evento &evento) const
+{
+    const QString filtro = ui->comboFiltroEventos->currentData().toString();
+    if (filtro == QStringLiteral("manual"))
+        return evento.idTaxi == sim->getTaxiManual()->getId();
+    return filtro.isEmpty() || evento.categoria == filtro;
+}
+
+void MainWindow::insertarEvento(const Evento &evento)
+{
+    QString texto = QStringLiteral("%1  ·  %2\n%3").arg(evento.hora, evento.categoria, evento.titulo);
+    if (!evento.detalle.isEmpty())
+        texto += QLatin1Char('\n') + evento.detalle;
+    auto *item = new QListWidgetItem(texto, ui->listaEventos);
+    item->setData(Qt::UserRole, evento.idNodo);
+    item->setToolTip(evento.idNodo >= 0 ? QStringLiteral("Pulsa para localizar el cruce en el mapa.") : texto);
+}
+
+void MainWindow::actualizarEventos()
+{
+    ui->listaEventos->clear();
+    for (const Evento &evento : eventos)
+    {
+        if (mostrarEvento(evento))
+            insertarEvento(evento);
+    }
+    const bool hayEventos = ui->listaEventos->count() > 0;
+    ui->lblEventosVacio->setVisible(!hayEventos);
+    ui->listaEventos->setVisible(hayEventos);
+    if (hayEventos)
+        ui->listaEventos->scrollToBottom();
+}
+
+void MainWindow::agregarEvento(QString hora, QString categoria, QString titulo, QString detalle, int idTaxi, int idNodo)
+{
+    const Evento evento{hora, categoria, titulo, detalle, idTaxi, idNodo};
+    eventos.append(evento);
+    if (!mostrarEvento(evento))
+        return;
+    QScrollBar *barra = ui->listaEventos->verticalScrollBar();
+    const bool alFinal = barra->value() >= barra->maximum();
+    insertarEvento(evento);
+    ui->lblEventosVacio->hide();
+    ui->listaEventos->show();
+    if (alFinal)
+        ui->listaEventos->scrollToBottom();
 }
 
 void MainWindow::configurarTablas()
@@ -429,7 +702,12 @@ void MainWindow::actualizarEstadoSimulacion()
                          : periodo == "Nocturno" ? QStringLiteral("Nocturno +$2.000")
                                                 : QStringLiteral("Tráfico normal");
     ui->lblGraphClock->setText(reloj.textoHora());
-    ui->lblGraphPeriod->setText(QStringLiteral("Día %1 · %2").arg(reloj.getDia()).arg(estado));
+    const QString siguiente = reloj.textoProximoPeriodo();
+    const QString resumen = QStringLiteral("Día %1 · %2").arg(reloj.getDia()).arg(estado);
+    ui->lblGraphPeriod->setText(siguiente.isEmpty() ? resumen : resumen + QLatin1Char('\n') + siguiente);
+    ui->lblGraphPeriod->setToolTip(siguiente);
+    ui->lblGraphClock->setToolTip(siguiente);
+    ui->lblGraphPeriod->setAccessibleDescription(siguiente);
 
     const TaxiManual *taxi = sim->getTaxiManual();
     const int viajes = taxi->getViajes();
@@ -525,6 +803,12 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     nodoSeleccionadoEdicion = -1;
 
     ui->setupUi(this);
+    ui->comboFiltroEventos->addItem(QStringLiteral("Mi taxi"), QStringLiteral("manual"));
+    ui->comboFiltroEventos->addItem(QStringLiteral("Viajes de la flota"), QStringLiteral("Viajes"));
+    ui->comboFiltroEventos->addItem(QStringLiteral("Tráfico"), QStringLiteral("Tráfico"));
+    ui->comboFiltroEventos->addItem(QStringLiteral("Cambios del mapa"), QStringLiteral("Mapa"));
+    ui->comboFiltroEventos->addItem(QStringLiteral("Todos"), QString());
+    ui->listaEventos->setResizeMode(QListView::Adjust);
     ui->comboMapTaxi->addItem(QStringLiteral("Mi taxi"), sim->getTaxiManual()->getId());
     ui->comboMapTaxi->addItem(QStringLiteral("Toda la flota"), -1);
     for (int i = 0; i < sim->getCantidadTaxis(); ++i)
@@ -567,6 +851,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
 
     configurarTablas();
     configurarPanelGuia();
+    actualizarEventos();
     enModoEdicionCambiado(0);
     actualizarResumenGrafo();
 
@@ -592,6 +877,23 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
         if (ui->btnEditMode->isChecked())
             enModoEdicionCambiado(indice + 1);
     });
+    connect(ui->comboSentidoCalle, &QComboBox::currentIndexChanged, this, [this](int indice) {
+        mapaWidget->setSentidoCalle(indice == 0);
+        actualizarTextoAyudaEdicion();
+    });
+    connect(ui->btnConstruirCalle, &QPushButton::clicked, this, &MainWindow::confirmarCalle);
+    for (const Qt::Key tecla : {Qt::Key_Return, Qt::Key_Enter})
+    {
+        auto *confirmar = new QShortcut(QKeySequence(tecla), ui->centralwidget);
+        confirmar->setContext(Qt::WidgetWithChildrenShortcut);
+        connect(confirmar, &QShortcut::activated, this, [this] {
+            if (modoEdicion == 2 && ui->btnConstruirCalle->isEnabled())
+                confirmarCalle();
+        });
+    }
+    auto *cancelar = new QShortcut(QKeySequence(Qt::Key_Escape), ui->centralwidget);
+    cancelar->setContext(Qt::WidgetWithChildrenShortcut);
+    connect(cancelar, &QShortcut::activated, this, &MainWindow::enCancelarClicado);
     connect(ui->chkWeights, &QCheckBox::toggled, this, &MainWindow::enMostrarPesosCambiado);
     const auto enfocarFila = [this](int fila, int) {
         if (fila < 0 || fila >= sim->getCantidadTaxis())
@@ -613,7 +915,15 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     connect(mapaWidget, &MapaWidget::espacioVacioClicado, this, &MainWindow::enEspacioVacioClicado);
     connect(mapaWidget, &MapaWidget::cancelarSolicitado, this, &MainWindow::enCancelarClicado);
 
-    connect(sim, &Simulacion::mensajeEvento, this, &MainWindow::agregarEvento);
+    connect(sim, &Simulacion::eventoOcurrido, this, &MainWindow::agregarEvento);
+    connect(ui->comboFiltroEventos, &QComboBox::currentIndexChanged, this, &MainWindow::actualizarEventos);
+    const auto ubicarEvento = [this](QListWidgetItem *item) {
+        const int id = item->data(Qt::UserRole).toInt();
+        if (id >= 0 && sim->getGrafo()->tieneNodo(id))
+            mapaWidget->resaltarNodo(id);
+    };
+    connect(ui->listaEventos, &QListWidget::itemClicked, this, ubicarEvento);
+    connect(ui->listaEventos, &QListWidget::itemActivated, this, ubicarEvento);
     temporizadorAviso.setSingleShot(true);
     connect(&temporizadorAviso, &QTimer::timeout, this, &MainWindow::actualizarEstadoSimulacion);
     connect(sim, &Simulacion::pasajeroRecogido, this, [this](int idTaxi, int origen, int destino) {
@@ -642,6 +952,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     });
     connect(sim, &Simulacion::reinicioCompletado, this, [this] {
         temporizadorAviso.stop();
+        limpiarSeleccionEdicion();
+        eventos.clear();
+        actualizarEventos();
         actualizarTextoAyudaEdicion();
     });
     connect(sim, &Simulacion::reinicioCompletado, this, &MainWindow::configurarTablas);
@@ -651,9 +964,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     connect(&temporizadorTablas, &QTimer::timeout, this, &MainWindow::actualizarTablas);
     temporizadorTablas.start();
 
-    agregarEvento(
-        QStringLiteral("Simulación iniciada."),
-        QColor("#ffd60a"));
     sim->iniciar();
 }
 

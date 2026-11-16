@@ -2,8 +2,10 @@
 #define GRAFO_H
 
 #include <QObject>
+#include <QPair>
 #include <QPointF>
 #include <QString>
+#include <QVector>
 
 #include "ResultadoRuta.h"
 
@@ -24,6 +26,24 @@ private:
     ResultadoRuta reconstruirRuta(int anterior[], int origen, int destino, int explorados) const;
 
 public:
+    struct RevisionCalle
+    {
+        bool valida = false;
+        QString motivo;
+        QVector<QPointF> cruces;
+        double peso = 0.0;
+        QVector<QPair<int, int>> tramosAfectados;
+    };
+
+    struct RevisionNodo
+    {
+        bool valida = false;
+        QString motivo;
+        QPointF posicion;
+        bool divideCalle = false;
+        QVector<QPair<int, int>> tramosAfectados;
+    };
+
     explicit Grafo(QObject *parent = nullptr);
 
     ~Grafo() override;
@@ -48,6 +68,13 @@ public:
     bool agregarArista(int origen, int destino, double peso = -1.0, bool esAvenida = false);
 
     bool agregarCalleDoble(int nodoA, int nodoB, double peso = -1.0, bool esAvenida = false);
+
+    RevisionCalle previsualizarCalle(int origen, int destino, bool dobleSentido) const;
+    bool crearCalleEditada(int origen, int destino, bool dobleSentido, bool conectarCruces,
+                           QString *motivo = nullptr);
+    RevisionNodo previsualizarNodo(QPointF posicion, double radioCalle = 16.0) const;
+    int crearNodoEditado(QPointF posicion, QString nombre, QString tipo, bool dividirCalle,
+                         QString *motivo = nullptr, double radioCalle = 16.0);
 
     bool eliminarCalle(int nodoA, int nodoB);
 
