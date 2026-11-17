@@ -30,4 +30,4 @@ public:
     void agregarNodoAlCamino(int idNodo);
 };
 
-#endif // RESULTADO_RUTA_H
+#endif

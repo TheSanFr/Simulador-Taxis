@@ -114,25 +114,10 @@ void MapaWidget::dibujarTextoConBorde(QPainter &p, QPointF centro, QString texto
     p.drawPath(rutaTexto);
 }
 
-QTransform MapaWidget::transformacionVista() const
+QTransform MapaWidget::transformacionVista()
 {
-    const QRectF limites = sim->getLimitesMapa();
-    QRectF encuadre = limites;
-    if (modoConducir)
-    {
-        encuadre.adjust(0.0, 52.0, 0.0, -48.0);
-        const ElementoNodo *elemento = sim->getGrafo()->getNodos()->getPrimero();
-        while (elemento != nullptr)
-        {
-            if (const Nodo *nodo = elemento->getNodo())
-            {
-                const QPointF pos = nodo->getPosicion();
-                encuadre = encuadre.united(QRectF(pos - QPointF(65, 65), QSizeF(130, 130)));
-            }
-            elemento = elemento->getSiguiente();
-        }
-        encuadre = encuadre.intersected(limites);
-    }
+    actualizarGeometria();
+    const QRectF encuadre = modoConducir ? encuadreConduccion : sim->getLimitesMapa();
     constexpr double margen = 5.0;
     const double escala = qMin((width() - 2 * margen) / encuadre.width(),
                                (height() - 2 * margen) / encuadre.height());
@@ -141,6 +126,96 @@ QTransform MapaWidget::transformacionVista() const
     t.scale(escala, escala);
     t.translate(-encuadre.center().x(), -encuadre.center().y());
     return t;
+}
+
+void MapaWidget::actualizarGeometria()
+{
+    if (!geometriaPendiente)
+        return;
+
+    const Grafo *grafo = sim->getGrafo();
+    const QRectF limites = sim->getLimitesMapa();
+    encuadreConduccion = limites.adjusted(0.0, 52.0, 0.0, -48.0);
+    for (const ElementoNodo *elemento = grafo->getNodos()->getPrimero(); elemento != nullptr;
+         elemento = elemento->getSiguiente())
+    {
+        if (const Nodo *nodo = elemento->getNodo())
+        {
+            const QPointF posicion = nodo->getPosicion();
+            encuadreConduccion = encuadreConduccion.united(
+                QRectF(posicion - QPointF(65, 65), QSizeF(130, 130)));
+        }
+    }
+    encuadreConduccion = encuadreConduccion.intersected(limites);
+
+    const ListaAristas *aristas = grafo->getAristas();
+    QSet<QPair<int, int>> sentidos;
+    sentidos.reserve(aristas->getCantidad());
+    for (const ElementoArista *elemento = aristas->getPrimero(); elemento != nullptr;
+         elemento = elemento->getSiguiente())
+    {
+        if (const Arista *arista = elemento->getArista())
+            sentidos.insert({arista->getOrigen(), arista->getDestino()});
+    }
+
+    const auto flecha = [](QPointF centro, QPointF direccion) {
+        const QPointF lado(-direccion.y(), direccion.x());
+        return std::array<QPointF, 3>{
+            centro - direccion * 4.5 + lado * 3.2,
+            centro + direccion * 4.5,
+            centro - direccion * 4.5 - lado * 3.2
+        };
+    };
+    tramosPorArista.clear();
+    tramosPorArista.reserve(aristas->getCantidad());
+    for (const ElementoArista *elemento = aristas->getPrimero(); elemento != nullptr;
+         elemento = elemento->getSiguiente())
+    {
+        tramosPorArista.append(TramoVisible{});
+        TramoVisible &tramo = tramosPorArista.last();
+        const Arista *arista = elemento->getArista();
+        if (arista == nullptr)
+            continue;
+
+        const int origen = arista->getOrigen();
+        const int destino = arista->getDestino();
+        tramo.dobleSentido = sentidos.contains({destino, origen});
+        if (tramo.dobleSentido && origen > destino)
+            continue;
+
+        const Nodo *desde = grafo->buscarNodo(origen);
+        const Nodo *hasta = grafo->buscarNodo(destino);
+        if (desde == nullptr || hasta == nullptr)
+            continue;
+
+        tramo.visible = true;
+        tramo.avenida = arista->getEsAvenida();
+        tramo.eje = QLineF(desde->getPosicion(), hasta->getPosicion());
+        const double longitud = tramo.eje.length();
+        if (longitud < 34.0)
+            continue;
+
+        tramo.dibujarFlechas = true;
+        const QPointF sentido = (tramo.eje.p2() - tramo.eje.p1()) / longitud;
+        if (tramo.dobleSentido && tramo.avenida && longitud > 70.0)
+            tramo.lineaCentral = QLineF(tramo.eje.p1() + sentido * 22, tramo.eje.p2() - sentido * 22);
+
+        const QPointF derecha(-sentido.y(), sentido.x());
+        const double carril = tramo.avenida ? 9.0 : 7.0;
+        tramo.flechaIda = flecha(tramo.eje.pointAt(tramo.dobleSentido ? 0.63 : 0.50)
+            + (tramo.dobleSentido ? derecha * carril : QPointF()), sentido);
+        if (tramo.dobleSentido)
+            tramo.flechaVuelta = flecha(tramo.eje.pointAt(0.37) - derecha * carril, -sentido);
+    }
+    geometriaPendiente = false;
+}
+
+void MapaWidget::invalidarGeometria()
+{
+    geometriaPendiente = true;
+    corredorPendiente = true;
+    escalaNombres = 0.0;
+    temporizadorRecorrido.stop();
 }
 
 QPointF MapaWidget::posicionDibujoTaxi(const Taxi *taxi) const
@@ -170,6 +245,7 @@ void MapaWidget::dibujarMundo(QPainter &p, bool esMinimapa)
     if (!esMinimapa)
     {
         dibujarConfirmacion(p);
+        dibujarRecorridoConsultado(p);
         for (int i = 0; i < textosFlotantes.size(); i++)
         {
             const TextoFlotante &tf = textosFlotantes[i];
@@ -190,7 +266,6 @@ void MapaWidget::dibujarFondoCiudad(QPainter &p, bool esMinimapa)
     const QRectF mundo = sim->getLimitesMapa();
     if (!esMinimapa)
     {
-        // Reserva acotada para el terreno. Las calles con tráfico se dibujan encima.
         constexpr double maximoPixeles = 2400000.0;
         const double escala = qMin(p.worldTransform().m11() * p.device()->devicePixelRatioF(),
                                    std::sqrt(maximoPixeles / (mundo.width() * mundo.height())));
@@ -226,25 +301,11 @@ void MapaWidget::actualizarCorredorCalles()
 
     corredorCalles = QPainterPath();
     corredorCalles.setFillRule(Qt::WindingFill);
-    const Grafo *grafo = sim->getGrafo();
-    const ElementoArista *elemento = grafo->getAristas()->getPrimero();
-    while (elemento != nullptr)
+    for (const TramoVisible &tramo : tramosPorArista)
     {
-        const Arista *arista = elemento->getArista();
-        elemento = elemento->getSiguiente();
-        if (arista == nullptr)
-            continue;
-
-        const Nodo *origen = grafo->buscarNodo(arista->getOrigen());
-        const Nodo *destino = grafo->buscarNodo(arista->getDestino());
-        if (origen == nullptr || destino == nullptr)
-            continue;
-        if (arista->getOrigen() > arista->getDestino()
-            && grafo->existeAristaDirigida(arista->getDestino(), arista->getOrigen()))
-            continue;
-
-        corredorCalles.addPath(corredorDeTramo(origen->getPosicion(), destino->getPosicion(),
-                                              anchoConAcera(arista->getEsAvenida()) + 4.0));
+        if (tramo.visible)
+            corredorCalles.addPath(corredorDeTramo(tramo.eje.p1(), tramo.eje.p2(),
+                                                  anchoConAcera(tramo.avenida) + 4.0));
     }
     QPainterPath superficieMapa;
     superficieMapa.addRect(sim->getLimitesMapa());
@@ -573,134 +634,98 @@ void MapaWidget::dibujarConfirmacion(QPainter &p)
     p.restore();
 }
 
+void MapaWidget::dibujarRecorridoConsultado(QPainter &p)
+{
+    if (!temporizadorRecorrido.isActive())
+        return;
+
+    const QRectF limites = sim->getLimitesMapa().intersected(p.clipBoundingRect()).adjusted(6, 6, -6, -6);
+    const double escala = p.worldTransform().m11();
+    const QFont fuente = fuentePixel(qBound(16, qRound(11.0 / escala), 27), true);
+    const QFontMetricsF medidas(fuente);
+    const auto marcar = [&](QPointF cruce, const QString &texto, const QColor &color, bool recogida) {
+        const double ancho = medidas.horizontalAdvance(texto) + 20;
+        const double alto = medidas.height() + 9;
+        const double x = qBound(limites.left(), cruce.x() - ancho / 2,
+                                qMax(limites.left(), limites.right() - ancho));
+        const double y = qBound(limites.top(), recogida ? cruce.y() - 26 - alto : cruce.y() + 24,
+                                qMax(limites.top(), limites.bottom() - alto));
+        const QRectF rotulo(x, y, ancho, alto);
+        const QPointF ancla(rotulo.center().x(), recogida ? rotulo.bottom() : rotulo.top());
+        p.setPen(QPen(color, 2.2, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
+        p.setBrush(Qt::NoBrush);
+        if (recogida)
+            p.drawEllipse(cruce, 14, 14);
+        else
+            p.drawPolygon(QPolygonF{cruce + QPointF(0, -15), cruce + QPointF(15, 0),
+                                    cruce + QPointF(0, 15), cruce + QPointF(-15, 0)});
+        const QLineF guia(cruce, ancla);
+        if (guia.length() > 16)
+            p.drawLine(guia.pointAt(15 / guia.length()), ancla);
+
+        p.setBrush(fondoPanel);
+        p.drawRoundedRect(rotulo, 6, 6);
+        p.setPen(color);
+        p.drawText(rotulo, Qt::AlignCenter, texto);
+    };
+    p.save();
+    p.setFont(fuente);
+    marcar(destinoConsultado, QStringLiteral("Destino"), QColor("#d7c8ff"), false);
+    marcar(recogidaConsultada, QStringLiteral("Recogida"), colorSeleccion, true);
+    p.restore();
+}
+
 void MapaWidget::dibujarCalles(QPainter &p, bool esMinimapa)
 {
-    Grafo *g = sim->getGrafo();
-
-    ElementoArista *elem = g->getAristas()->getPrimero();
-    while (elem != nullptr)
+    const QPen acera(QColor("#565d56"), anchoConAcera(false), Qt::SolidLine, Qt::RoundCap);
+    const QPen aceraAvenida(QColor("#565d56"), anchoConAcera(true), Qt::SolidLine, Qt::RoundCap);
+    for (const TramoVisible &tramo : tramosPorArista)
     {
-        Arista *arista = elem->getArista();
-        elem = elem->getSiguiente();
-        if (arista == nullptr)
-        {
+        if (!tramo.visible)
             continue;
-        }
-
-        bool tieneInversa = g->existeAristaDirigida(arista->getDestino(), arista->getOrigen());
-        if (tieneInversa && arista->getOrigen() > arista->getDestino())
-        {
-            continue;
-        }
-
-        Nodo *na = g->buscarNodo(arista->getOrigen());
-        Nodo *nb = g->buscarNodo(arista->getDestino());
-        if (na == nullptr || nb == nullptr)
-        {
-            continue;
-        }
-
-        bool av = arista->getEsAvenida();
-        p.setPen(QPen(QColor("#565d56"), anchoConAcera(av), Qt::SolidLine, Qt::RoundCap));
-        p.drawLine(na->getPosicion(), nb->getPosicion());
+        p.setPen(tramo.avenida ? aceraAvenida : acera);
+        p.drawLine(tramo.eje);
     }
 
     p.fillPath(plataformaPuentes, QColor("#818f8c"));
-    elem = g->getAristas()->getPrimero();
-    while (elem != nullptr)
+    const Grafo *grafo = sim->getGrafo();
+    const ElementoArista *elemento = grafo->getAristas()->getPrimero();
+    const QColor baseCalle("#373e3d");
+    const QColor baseAvenida("#414746");
+    for (const TramoVisible &tramo : tramosPorArista)
     {
-        Arista *arista = elem->getArista();
-        elem = elem->getSiguiente();
-        if (arista == nullptr)
-        {
+        Arista *arista = elemento->getArista();
+        elemento = elemento->getSiguiente();
+        if (!tramo.visible)
             continue;
-        }
-
-        bool tieneInversa = g->existeAristaDirigida(arista->getDestino(), arista->getOrigen());
-        if (tieneInversa && arista->getOrigen() > arista->getDestino())
-        {
-            continue;
-        }
-
-        Nodo *na = g->buscarNodo(arista->getOrigen());
-        Nodo *nb = g->buscarNodo(arista->getDestino());
-        if (na == nullptr || nb == nullptr)
-        {
-            continue;
-        }
-
-        bool av = arista->getEsAvenida();
-        QColor base = av ? QColor("#414746") : QColor("#373e3d");
-        QColor c = mezclarColores(base, colorTrafico,
-                                  qBound(0.0, (g->obtenerNivelCongestion(arista) - 1.05) * 0.14, 0.26));
-        p.setPen(QPen(c, av ? 35 : 24, Qt::SolidLine, Qt::RoundCap));
-        p.drawLine(na->getPosicion(), nb->getPosicion());
+        const QColor color = mezclarColores(tramo.avenida ? baseAvenida : baseCalle, colorTrafico,
+            qBound(0.0, (grafo->obtenerNivelCongestion(arista) - 1.05) * 0.14, 0.26));
+        p.setPen(QPen(color, tramo.avenida ? 35 : 24, Qt::SolidLine, Qt::RoundCap));
+        p.drawLine(tramo.eje);
     }
 
     if (esMinimapa)
-    {
         return;
-    }
 
-    elem = g->getAristas()->getPrimero();
-    while (elem != nullptr)
+    QPen marcas(QColor(216, 212, 186, 95), 1.4, Qt::CustomDashLine, Qt::FlatCap);
+    marcas.setDashPattern({6, 7});
+    const QPen doble(QColor("#a5aaa1"), modoConducir && taxiEnFoco >= 0 ? 1.3 : 2.0,
+                     Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    const QPen unico(QColor("#e8dfc9"), 2.8, Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin);
+    for (const TramoVisible &tramo : tramosPorArista)
     {
-        Arista *arista = elem->getArista();
-        elem = elem->getSiguiente();
-        if (arista == nullptr)
-        {
+        if (!tramo.dibujarFlechas)
             continue;
-        }
 
-        bool tieneInversa = g->existeAristaDirigida(arista->getDestino(), arista->getOrigen());
-        if (tieneInversa && arista->getOrigen() > arista->getDestino())
+        if (!tramo.lineaCentral.isNull())
         {
-            continue;
-        }
-
-        Nodo *na = g->buscarNodo(arista->getOrigen());
-        Nodo *nb = g->buscarNodo(arista->getDestino());
-        if (na == nullptr || nb == nullptr)
-        {
-            continue;
-        }
-
-        QPointF a = na->getPosicion();
-        QPointF b = nb->getPosicion();
-        const QLineF linea(a, b);
-        if (linea.length() < 34.0)
-        {
-            continue;
-        }
-
-        const QPointF sentido = (b - a) / linea.length();
-        if (tieneInversa && arista->getEsAvenida() && linea.length() > 70.0)
-        {
-            QPen marcas(QColor(216, 212, 186, 95), 1.4, Qt::CustomDashLine, Qt::FlatCap);
-            marcas.setDashPattern({6, 7});
             p.setPen(marcas);
-            p.drawLine(a + sentido * 22, b - sentido * 22);
+            p.drawLine(tramo.lineaCentral);
         }
-        p.setPen(QPen(tieneInversa ? QColor("#a5aaa1") : QColor("#e8dfc9"),
-                      tieneInversa ? (modoConducir && taxiEnFoco >= 0 ? 1.3 : 2.0) : 2.8,
-                      Qt::SolidLine, Qt::RoundCap, Qt::RoundJoin));
-        const auto chevron = [&p](QPointF centro, QPointF direccion) {
-            const QPointF lado(-direccion.y(), direccion.x());
-            const QPointF puntos[] = {
-                centro - direccion * 4.5 + lado * 3.2,
-                centro + direccion * 4.5,
-                centro - direccion * 4.5 - lado * 3.2
-            };
-            p.drawPolyline(puntos, 3);
-        };
-        const QPointF haciaDerecha(-sentido.y(), sentido.x());
-        const double carril = arista->getEsAvenida() ? 9.0 : 7.0;
-        chevron(linea.pointAt(tieneInversa ? 0.63 : 0.50)
-                    + (tieneInversa ? haciaDerecha * carril : QPointF()), sentido);
-        if (tieneInversa)
-        {
-            chevron(linea.pointAt(0.37) - haciaDerecha * carril, -sentido);
-        }
+        p.setPen(tramo.dobleSentido ? doble : unico);
+        p.drawPolyline(tramo.flechaIda.data(), tramo.flechaIda.size());
+        if (tramo.dobleSentido)
+            p.drawPolyline(tramo.flechaVuelta.data(), tramo.flechaVuelta.size());
     }
 }
 
@@ -749,7 +774,6 @@ void MapaWidget::dibujarRutas(QPainter &p)
         p.drawPolyline(poli);
     }
 
-    // La vista previa solo representa la calle que admitiría el siguiente clic.
     const TaxiManual *manual = sim->getTaxiManual();
     if (!modoConducir || manual == nullptr || nodoBajoMouse < 0 || !mostrarRutaDelTaxi(manual))
         return;
@@ -780,40 +804,25 @@ void MapaWidget::dibujarRutas(QPainter &p)
 
 void MapaWidget::dibujarPesos(QPainter &p)
 {
-    Grafo *g = sim->getGrafo();
-    QFont fuente = fuentePixel(12, true);
-    QFontMetricsF fm(fuente);
+    const Grafo *grafo = sim->getGrafo();
+    const QFont fuente = fuentePixel(12, true);
+    const QFontMetricsF fm(fuente);
     p.setFont(fuente);
 
-    ElementoArista *elem = g->getAristas()->getPrimero();
-    while (elem != nullptr)
+    const ElementoArista *elemento = grafo->getAristas()->getPrimero();
+    for (const TramoVisible &tramo : tramosPorArista)
     {
-        Arista *a = elem->getArista();
-        elem = elem->getSiguiente();
-        if (a == nullptr)
-        {
+        Arista *arista = elemento->getArista();
+        elemento = elemento->getSiguiente();
+        if (!tramo.visible)
             continue;
-        }
 
-        if (a->getOrigen() > a->getDestino()
-            && g->existeAristaDirigida(a->getDestino(), a->getOrigen()))
-        {
-            continue;
-        }
-
-        Nodo *n1 = g->buscarNodo(a->getOrigen());
-        Nodo *n2 = g->buscarNodo(a->getDestino());
-        if (n1 == nullptr || n2 == nullptr)
-        {
-            continue;
-        }
-
-        QPointF centro = (n1->getPosicion() + n2->getPosicion()) / 2.0;
-        QString texto = QString::number(g->obtenerPesoEfectivoArista(a), 'f', 1);
-        QColor tono = mezclarColores(textoPrincipal, colorTrafico,
-                                     (g->obtenerNivelCongestion(a) - 1.05) / 1.6);
-        double ancho = fm.horizontalAdvance(texto) + 10;
-        QRectF caja(centro.x() - ancho / 2, centro.y() - 8, ancho, 16);
+        const QPointF centro = tramo.eje.center();
+        const QString texto = QString::number(grafo->obtenerPesoEfectivoArista(arista), 'f', 1);
+        const QColor tono = mezclarColores(textoPrincipal, colorTrafico,
+                                           (grafo->obtenerNivelCongestion(arista) - 1.05) / 1.6);
+        const double ancho = fm.horizontalAdvance(texto) + 10;
+        const QRectF caja(centro.x() - ancho / 2, centro.y() - 8, ancho, 16);
         p.setPen(QPen(bordePanel, 1.5));
         p.setBrush(fondoPanel);
         p.drawRoundedRect(caja, 4, 4);
@@ -1193,17 +1202,20 @@ void MapaWidget::dibujarEfectosNocturnos(QPainter &p)
     }
 }
 
+QRectF MapaWidget::areaMinimapa() const
+{
+    if (sim == nullptr || sim->getTaxiManual() == nullptr || taxiEnFoco >= 0
+        || width() < 1000 || height() < 575)
+        return {};
+    return QRectF(14, height() - 110, 138, 96);
+}
+
 void MapaWidget::dibujarMinimapa(QPainter &p)
 {
-    if (taxiEnFoco >= 0 || width() < 1000 || height() < 575)
-    {
-        return;
-    }
-    const Taxi *referencia = sim->getTaxiManual();
-    if (referencia == nullptr)
+    const QRectF panel = areaMinimapa();
+    if (panel.isEmpty())
         return;
 
-    const QRectF panel(14, height() - 110, 138, 96);
     const QRectF vista = panel.adjusted(1, 19, -1, -1);
 
     p.setPen(QPen(bordePanel, 1));
@@ -1219,7 +1231,8 @@ void MapaWidget::dibujarMinimapa(QPainter &p)
     QTransform t;
     t.translate(vista.center().x(), vista.center().y());
     t.scale(0.20, 0.20);
-    t.translate(-referencia->getPosicion().x(), -referencia->getPosicion().y());
+    const QPointF referencia = sim->getTaxiManual()->getPosicion();
+    t.translate(-referencia.x(), -referencia.y());
     p.setTransform(t);
     dibujarMundo(p, true);
     p.restore();
@@ -1301,7 +1314,7 @@ void MapaWidget::mousePressEvent(QMouseEvent *e)
         emit cancelarSolicitado();
         return;
     }
-    if (e->button() != Qt::LeftButton)
+    if (e->button() != Qt::LeftButton || areaMinimapa().contains(e->position()))
     {
         return;
     }
@@ -1322,6 +1335,15 @@ void MapaWidget::mouseMoveEvent(QMouseEvent *e)
 {
     if (sim == nullptr)
     {
+        return;
+    }
+    if (areaMinimapa().contains(e->position()))
+    {
+        const bool cursorEstabaEnMapa = cursorEnMapa;
+        cursorEnMapa = false;
+        seleccionarNodoEnFoco(-1);
+        if (!modoConducir && cursorEstabaEnMapa)
+            update();
         return;
     }
     posicionCursorMapa = transformacionVista().inverted().map(e->position());
@@ -1406,13 +1428,16 @@ MapaWidget::MapaWidget(QWidget *parent) : QWidget(parent)
     animacionConfirmacion.setEndValue(1.0);
     animacionConfirmacion.setEasingCurve(QEasingCurve::OutCubic);
     connect(&animacionConfirmacion, &QVariantAnimation::valueChanged, this, [this] { update(); });
+
+    temporizadorRecorrido.setSingleShot(true);
+    temporizadorRecorrido.setInterval(1900);
+    connect(&temporizadorRecorrido, &QTimer::timeout, this, [this] { update(); });
 }
 
 void MapaWidget::setSimulacion(Simulacion *nuevaSim)
 {
     sim = nuevaSim;
-    corredorPendiente = true;
-    escalaNombres = 0.0;
+    invalidarGeometria();
     connect(sim, &Simulacion::cuadroActualizado, this, &MapaWidget::enCuadro);
     connect(sim, &Simulacion::carreraCompletada, this, &MapaWidget::enCarreraCompletada);
     connect(sim, &Simulacion::pasajeroRecogido, this, [this](int idTaxi, int origen, int) {
@@ -1424,8 +1449,7 @@ void MapaWidget::setSimulacion(Simulacion *nuevaSim)
             resaltarNodo(origen);
     });
     connect(sim->getGrafo(), &Grafo::grafoModificado, this, [this] {
-        corredorPendiente = true;
-        escalaNombres = 0.0;
+        invalidarGeometria();
         if (!sim->getGrafo()->tieneNodo(nodoBajoMouse))
         {
             seleccionarNodoEnFoco(-1);
@@ -1469,6 +1493,30 @@ void MapaWidget::resaltarNodo(int idNodo)
     animacionConfirmacion.start();
 }
 
+void MapaWidget::resaltarRecorridoPasajero(int origen, int destino)
+{
+    if (sim == nullptr || !modoConducir)
+        return;
+
+    const Nodo *recogida = sim->getGrafo()->buscarNodo(origen);
+    const Nodo *llegada = sim->getGrafo()->buscarNodo(destino);
+    if (recogida == nullptr || llegada == nullptr)
+        return;
+
+    recogidaConsultada = recogida->getPosicion();
+    destinoConsultado = llegada->getPosicion();
+    temporizadorRecorrido.start();
+    update();
+}
+
+void MapaWidget::ocultarRecorridoPasajero()
+{
+    if (!temporizadorRecorrido.isActive())
+        return;
+    temporizadorRecorrido.stop();
+    update();
+}
+
 void MapaWidget::resaltarCalle(int origen, int destino)
 {
     if (sim == nullptr)
@@ -1490,6 +1538,8 @@ void MapaWidget::setModoConducir(bool activo)
     escalaNombres = 0.0;
     if (activo)
         destinoProvisional = -1;
+    else
+        temporizadorRecorrido.stop();
     update();
 }
 

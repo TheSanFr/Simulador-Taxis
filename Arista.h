@@ -26,4 +26,4 @@ public:
     void setEsAvenida(bool esAvenida);
 };
 
-#endif // ARISTA_H
+#endif

@@ -215,7 +215,6 @@ void Simulacion::generarPasajero()
     QRandomGenerator &rng = *QRandomGenerator::global();
     const int origen = origenes[rng.bounded(static_cast<int>(origenes.size()))];
 
-    // Recorrer salidas dirigidas incluye los destinos alcanzables que no tienen salida.
     QVector<int> alcanzables{origen};
     QSet<int> visitados{origen};
     for (qsizetype i = 0; i < alcanzables.size(); ++i)
@@ -249,8 +248,7 @@ void Simulacion::generarPasajero()
         eleccion -= pesoDestino(destino);
         if (eleccion < 0)
         {
-            const double tarifa = cotizarCarrera(origen, destino);
-            pasajeros.append(Pasajero(siguienteIdPasajero++, origen, destino, tarifa));
+            pasajeros.append(Pasajero(siguienteIdPasajero++, origen, destino));
             return;
         }
     }
@@ -317,7 +315,6 @@ void Simulacion::revisarParadaTaxi(Taxi *taxi)
                 taxi->subirPasajero(destino, tarifa);
                 if (!taxi->esManual())
                 {
-                    // El viaje a bordo sustituye a cualquier trayecto de recogida pendiente.
                     taxi->limpiarRuta();
                 }
                 emit pasajeroRecogido(taxi->getId(), origen, destino);
@@ -404,7 +401,6 @@ void Simulacion::actualizarTaxi(Taxi *taxi, double dt)
     const int objetivo = taxi->getIdPasajeroObjetivo();
     if (objetivo >= 0 && buscarIndicePasajeroPorId(objetivo) < 0)
     {
-        // Si otro taxi recogió al cliente, replanteamos la ruta desde este cruce.
         taxi->setIdPasajeroObjetivo(-1);
         taxi->limpiarRuta();
     }

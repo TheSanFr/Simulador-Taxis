@@ -27,4 +27,4 @@ public:
     void limpiar();
 };
 
-#endif // LISTA_NODOS_H
+#endif

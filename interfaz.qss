@@ -1,4 +1,3 @@
-/* Surfaces and controls shared by the simulator and its dialogs. */
 QMainWindow, QDialog {
     background: #151a1d;
 }

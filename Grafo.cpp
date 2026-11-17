@@ -388,6 +388,7 @@ Grafo::Grafo(QObject *parent) : QObject(parent)
     nodos = new ListaNodos();
     aristas = new ListaAristas();
     multiplicadorHoraPico = 1.0;
+    connect(this, &Grafo::grafoModificado, this, [this] { ++revisionPesos; });
 }
 
 Grafo::~Grafo()
@@ -418,9 +419,19 @@ bool Grafo::tieneNodo(int id) const
     return buscarNodo(id) != nullptr;
 }
 
+quint64 Grafo::getIdentidadNodo(int id) const
+{
+    return id >= 0 && id < limiteNodos ? identidadesNodos[id] : 0;
+}
+
+quint64 Grafo::getRevisionPesos() const
+{
+    return revisionPesos;
+}
+
 int Grafo::obtenerSiguienteIdDisponible() const
 {
-    for (int i = 0; i < 100; i++)
+    for (int i = 0; i < limiteNodos; i++)
     {
         if (buscarNodo(i) == nullptr)
         {
@@ -432,12 +443,13 @@ int Grafo::obtenerSiguienteIdDisponible() const
 
 int Grafo::agregarNodo(int id, QString nombre, int x, int y, QString tipo)
 {
-    if (id < 0 || id >= 100 || buscarNodo(id) != nullptr)
+    if (id < 0 || id >= limiteNodos || buscarNodo(id) != nullptr)
     {
         return -1;
     }
 
     nodos->agregar(new Nodo(id, nombre, x, y, tipo));
+    identidadesNodos[id] = siguienteIdentidadNodo++;
     emit grafoModificado();
     return id;
 }
@@ -461,6 +473,7 @@ bool Grafo::eliminarNodo(int id)
 
     aristas->eliminarAristasDeNodo(id);
     bool ok = nodos->eliminarPorId(id);
+    identidadesNodos[id] = 0;
     emit grafoModificado();
     return ok;
 }
@@ -524,7 +537,7 @@ bool Grafo::agregarCalleDoble(int nodoA, int nodoB, double peso, bool esAvenida)
     return ab || ba;
 }
 
-Grafo::RevisionCalle Grafo::previsualizarCalle(int origen, int destino, bool /*dobleSentido*/) const
+Grafo::RevisionCalle Grafo::previsualizarCalle(int origen, int destino, bool) const
 {
     const PlanEdicion plan = prepararCalle(*this, origen, destino);
     RevisionCalle revision;
@@ -583,7 +596,6 @@ bool Grafo::crearCalleEditada(int origen, int destino, bool dobleSentido, bool c
     if (!error.isEmpty())
         return false;
 
-    // La interfaz y la simulación ven únicamente el grafo resultante.
     {
         const QSignalBlocker bloquear(this);
         for (int indice : nuevos)
@@ -688,6 +700,7 @@ void Grafo::limpiar()
 {
     nodos->limpiar();
     aristas->limpiar();
+    identidadesNodos.fill(0);
     emit grafoModificado();
 }
 
@@ -699,21 +712,6 @@ Arista *Grafo::obtenerArista(int origen, int destino) const
 bool Grafo::existeAristaDirigida(int origen, int destino) const
 {
     return aristas->existeArista(origen, destino);
-}
-
-bool Grafo::tieneSalidas(int idNodo) const
-{
-    ElementoArista *actual = aristas->getPrimero();
-    while (actual != nullptr)
-    {
-        Arista *a = actual->getArista();
-        if (a != nullptr && a->getOrigen() == idNodo)
-        {
-            return true;
-        }
-        actual = actual->getSiguiente();
-    }
-    return false;
 }
 
 double Grafo::obtenerPesoEfectivo(int origen, int destino) const
@@ -763,13 +761,16 @@ void Grafo::registrarUso(int origen, int destino)
     {
         nuevoPeso = maximo;
     }
-    ab->setPeso(nuevoPeso);
-
     Arista *ba = aristas->obtenerArista(destino, origen);
+    if (ab->getPeso() == nuevoPeso && (ba == nullptr || ba->getPeso() == nuevoPeso))
+        return;
+
+    ab->setPeso(nuevoPeso);
     if (ba != nullptr)
     {
         ba->setPeso(nuevoPeso);
     }
+    ++revisionPesos;
 }
 
 int Grafo::nodoMasCercano(QPointF punto, double distanciaMaxima) const
@@ -798,7 +799,10 @@ int Grafo::nodoMasCercano(QPointF punto, double distanciaMaxima) const
 
 void Grafo::setMultiplicadorHoraPico(double multiplicador)
 {
-    this->multiplicadorHoraPico = multiplicador;
+    if (multiplicadorHoraPico == multiplicador)
+        return;
+    multiplicadorHoraPico = multiplicador;
+    ++revisionPesos;
 }
 
 double Grafo::getMultiplicadorHoraPico() const

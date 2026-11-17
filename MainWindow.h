@@ -12,6 +12,7 @@
 class BarrasGananciasWidget;
 class GraficoGananciasWidget;
 class MapaWidget;
+class QShortcut;
 class QTableWidget;
 class Simulacion;
 class Taxi;
@@ -32,26 +33,20 @@ private:
     BarrasGananciasWidget *barrasWidget;
     GraficoGananciasWidget *graficoWidget;
 
-    /*
-        Modos de edición:
-        0 = conducir taxi manual
-        1 = agregar nodo
-        2 = agregar calle
-        3 = eliminar calle
-        4 = eliminar nodo
-        5 = cambiar peso de calle
-    */
     int modoEdicion;
     int nodoSeleccionadoEdicion;
     int destinoEdicion = -1;
     bool pausaAntesDeEditar = false;
     QTimer temporizadorTablas;
     QTimer temporizadorAviso;
+    QVector<QShortcut *> atajosConfirmar;
     QString avisoTrayecto;
     bool llegadaManualReciente = false;
-    QVector<double> pesosCotizados;
+    quint64 revisionPesosCotizados = 0;
     QString periodoCotizado;
     QHash<int, QString> tarifasVisibles;
+    QVector<int> pasajerosEnTabla;
+    int pasajeroUbicado = -1;
 
     struct Evento
     {
@@ -61,6 +56,7 @@ private:
         QString detalle;
         int idTaxi;
         int idNodo;
+        quint64 identidadNodo;
     };
     QVector<Evento> eventos;
 
@@ -74,6 +70,7 @@ private:
     void limpiarSeleccionEdicion();
     void confirmarCalle();
     bool tramoEnUso(int origen, int destino) const;
+    QString avisoCalleOcupada() const;
     QString motivoNodoEnUso(int idNodo) const;
     bool conservarViajesAlEliminar(int nodo, int extremoA, int extremoB) const;
 
@@ -87,6 +84,8 @@ private:
     void actualizarResumenGrafo();
     void actualizarEstadoSimulacion();
     void actualizarEspera();
+    void ubicarPasajero(int fila);
+    void limpiarUbicacionPasajero();
 
 private slots:
     void enPausaCambiada(bool pausada);
@@ -121,4 +120,4 @@ public:
     ~MainWindow() override;
 };
 
-#endif // MAIN_WINDOW_H
+#endif

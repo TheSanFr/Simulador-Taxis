@@ -54,13 +54,6 @@
         <number>8</number>
        </property>
        <item>
-        <widget name="lblGraphMark" class="QLabel">
-         <property name="text">
-          <string />
-         </property>
-        </widget>
-       </item>
-       <item>
         <widget class="QLabel" name="lblProduct">
          <property name="text">
           <string>TaxiGraph</string>
@@ -663,7 +656,30 @@
              <number>4</number>
             </property>
             <item>
-             <widget class="QTableWidget" name="tablePassengers" />
+             <widget class="QLabel" name="lblEsperaVacia">
+              <property name="text">
+               <string>No hay pasajeros en espera.</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignHCenter|Qt::AlignTop</set>
+              </property>
+              <property name="margin">
+               <number>12</number>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QTableWidget" name="tablePassengers">
+              <property name="accessibleName">
+               <string>Pasajeros en espera</string>
+              </property>
+              <property name="accessibleDescription">
+               <string>Activa una fila para localizar la recogida y el destino en el mapa.</string>
+              </property>
+             </widget>
             </item>
            </layout>
           </widget>

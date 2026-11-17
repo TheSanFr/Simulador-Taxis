@@ -17,4 +17,4 @@ public:
     void setSiguiente(ElementoArista *siguiente);
 };
 
-#endif // ELEMENTO_ARISTA_H
+#endif

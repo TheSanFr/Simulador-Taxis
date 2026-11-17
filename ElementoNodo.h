@@ -17,4 +17,4 @@ public:
     void setSiguiente(ElementoNodo *siguiente);
 };
 
-#endif // ELEMENTO_NODO_H
+#endif

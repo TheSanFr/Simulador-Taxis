@@ -23,4 +23,4 @@ public:
     void limpiar();
 };
 
-#endif // COLA_H
+#endif

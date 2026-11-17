@@ -10,6 +10,10 @@
 #include <QVariantAnimation>
 #include <QWidget>
 
+#ifdef Q_OS_WIN
+#include <qt_windows.h>
+#endif
+
 class TransicionesPanel final : public QWidget
 {
 public:
@@ -35,7 +39,8 @@ public:
             const int direccion = indice >= indiceAnterior ? -1 : 1;
             indiceAnterior = indice;
             finalizar();
-            if (saliente == nullptr || anterior.isNull() || !anterior->isVisible())
+            if (saliente == nullptr || anterior.isNull() || !anterior->isVisible()
+                || !animacionesPermitidas())
                 return;
 
             const qreal escala = saliente->devicePixelRatioF();
@@ -73,6 +78,16 @@ protected:
     }
 
 private:
+    static bool animacionesPermitidas()
+    {
+#ifdef Q_OS_WIN
+        BOOL activadas = TRUE;
+        if (SystemParametersInfoW(SPI_GETCLIENTAREAANIMATION, 0, &activadas, 0))
+            return activadas != FALSE;
+#endif
+        return true;
+    }
+
     void finalizar()
     {
         animacion.stop();
@@ -87,4 +102,4 @@ private:
     int desplazamiento = 0;
 };
 
-#endif // TRANSICIONES_PANEL_H
+#endif

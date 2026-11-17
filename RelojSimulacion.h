@@ -8,7 +8,7 @@ class RelojSimulacion
 private:
     double segundosDelDia;
     int dia;
-    int modo; // 0 = Automático, 1 = Normal, 2 = Nocturno, 3 = Hora Pico
+    int modo;
 
     int minutoActual() const;
 
@@ -31,4 +31,4 @@ public:
     double oscuridad() const;
 };
 
-#endif // RELOJ_SIMULACION_H
+#endif

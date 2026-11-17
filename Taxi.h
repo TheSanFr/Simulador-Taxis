@@ -97,4 +97,4 @@ public:
     QString textoEstado(Grafo *grafo) const;
 };
 
-#endif // TAXI_H
+#endif

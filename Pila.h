@@ -22,4 +22,4 @@ public:
     void limpiar();
 };
 
-#endif // PILA_H
+#endif

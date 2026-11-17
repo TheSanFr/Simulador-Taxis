@@ -23,4 +23,4 @@ public:
     void avanzarEdad(double dt);
 };
 
-#endif // TEXTO_FLOTANTE_H
+#endif

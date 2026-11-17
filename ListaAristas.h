@@ -31,4 +31,4 @@ public:
     void limpiar();
 };
 
-#endif // LISTA_ARISTAS_H
+#endif

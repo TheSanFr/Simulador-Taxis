@@ -15,4 +15,4 @@ public:
     bool agregarNodoARuta(int idNodo, Grafo *grafo);
 };
 
-#endif // TAXI_MANUAL_H
+#endif

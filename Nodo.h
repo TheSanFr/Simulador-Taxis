@@ -11,7 +11,7 @@ private:
     QString nombre;
     int x;
     int y;
-    QString tipo; // "Normal", "Aeropuerto", "Terminal", "Turistico"
+    QString tipo;
 
 public:
     Nodo(int id, QString nombre, int x, int y, QString tipo);
@@ -30,4 +30,4 @@ public:
     void setTipo(QString tipo);
 };
 
-#endif // NODO_H
+#endif

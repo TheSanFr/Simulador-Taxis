@@ -15,4 +15,4 @@ public:
     void setSiguiente(NodoCola *siguiente);
 };
 
-#endif // NODO_COLA_H
+#endif

@@ -118,4 +118,4 @@ signals:
     void carreraCompletada(int idTaxi, QPointF posMapa, double tarifa, QColor color);
 };
 
-#endif // SIMULACION_H
+#endif

@@ -13,4 +13,4 @@ public:
     ResultadoRuta calcularRuta(Grafo *grafo, int origen, int destino) override;
 };
 
-#endif // TAXI_BFS_H
+#endif

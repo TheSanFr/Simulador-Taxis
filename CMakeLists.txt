@@ -10,7 +10,6 @@ set(CMAKE_AUTOUIC ON)
 find_package(Qt6 REQUIRED COMPONENTS Widgets Charts)
 qt_standard_project_setup()
 
-# Las clases se declaran en .h y se implementan en .cpp. Qt genera el codigo de los formularios .ui.
 qt_add_executable(TaxiGraph
     main.cpp
     Nodo.h

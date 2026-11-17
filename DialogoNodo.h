@@ -24,4 +24,4 @@ public:
     QString getTipoNodo() const;
 };
 
-#endif // DIALOGO_NODO_H
+#endif

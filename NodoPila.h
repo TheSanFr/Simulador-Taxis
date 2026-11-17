@@ -15,4 +15,4 @@ public:
     void setSiguiente(NodoPila *siguiente);
 };
 
-#endif // NODO_PILA_H
+#endif

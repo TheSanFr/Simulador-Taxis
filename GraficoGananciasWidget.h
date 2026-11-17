@@ -33,4 +33,4 @@ public:
     void setSimulacion(Simulacion *nuevaSim);
 };
 
-#endif // GRAFICO_GANANCIAS_WIDGET_H
+#endif

@@ -21,6 +21,7 @@ private slots:
 
 protected:
     void paintEvent(QPaintEvent *) override;
+    void showEvent(QShowEvent *event) override;
 
 public:
     explicit BarrasGananciasWidget(QWidget *parent = nullptr);
@@ -28,4 +29,4 @@ public:
     void setSimulacion(Simulacion *nuevaSim);
 };
 
-#endif // BARRAS_GANANCIAS_WIDGET_H
+#endif

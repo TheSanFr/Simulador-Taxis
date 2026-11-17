@@ -17,4 +17,4 @@ public:
     QString getTipo() const;
 };
 
-#endif // MANZANA_CIUDAD_H
+#endif

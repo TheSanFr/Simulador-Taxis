@@ -7,17 +7,13 @@ private:
     int id;
     int origen;
     int destino;
-    double tarifa;
 
 public:
-    Pasajero(int id, int origen, int destino, double tarifa);
+    Pasajero(int id, int origen, int destino);
 
     int getId() const;
     int getOrigen() const;
     int getDestino() const;
-    double getTarifa() const;
-
-    void setTarifa(double tarifa);
 };
 
-#endif // PASAJERO_H
+#endif

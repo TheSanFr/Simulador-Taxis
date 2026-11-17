@@ -3,15 +3,18 @@
 
 #include <QColor>
 #include <QFont>
+#include <QLineF>
 #include <QPainterPath>
 #include <QPixmap>
 #include <QPointF>
 #include <QStaticText>
 #include <QString>
+#include <QTimer>
 #include <QTransform>
 #include <QVariantAnimation>
 #include <QVector>
 #include <QWidget>
+#include <array>
 
 #include "TextoFlotante.h"
 
@@ -38,6 +41,20 @@ private:
     QPointF inicioConfirmacion;
     QPointF finConfirmacion;
     bool confirmarTramo = false;
+    struct TramoVisible
+    {
+        QLineF eje;
+        QLineF lineaCentral;
+        std::array<QPointF, 3> flechaIda;
+        std::array<QPointF, 3> flechaVuelta;
+        bool visible = false;
+        bool avenida = false;
+        bool dobleSentido = false;
+        bool dibujarFlechas = false;
+    };
+    QVector<TramoVisible> tramosPorArista;
+    QRectF encuadreConduccion;
+    bool geometriaPendiente = true;
     QPainterPath corredorCalles;
     QPainterPath terrenoDisponible;
     QPainterPath plataformaPuentes;
@@ -57,6 +74,9 @@ private:
     bool mostrarPesos;
     int taxiEnFoco = -1;
     QVector<TextoFlotante> textosFlotantes;
+    QTimer temporizadorRecorrido;
+    QPointF recogidaConsultada;
+    QPointF destinoConsultado;
 
     static QFont fuentePixel(int px, bool negrita = false);
 
@@ -67,7 +87,9 @@ private:
     static void dibujarTextoConBorde(QPainter &p, QPointF centro, QString texto,
                                      QFont fuente, QColor relleno, double grosorBorde = 3.5);
 
-    QTransform transformacionVista() const;
+    QTransform transformacionVista();
+    void actualizarGeometria();
+    void invalidarGeometria();
     int nodoInteractivo(QPointF posMapa) const;
 
     QPointF posicionDibujoTaxi(const Taxi *taxi) const;
@@ -81,6 +103,7 @@ private:
     void actualizarCorredorCalles();
     void dibujarVistaPreviaEdicion(QPainter &p);
     void dibujarConfirmacion(QPainter &p);
+    void dibujarRecorridoConsultado(QPainter &p);
 
     void dibujarCalles(QPainter &p, bool esMinimapa);
 
@@ -97,6 +120,7 @@ private:
     void dibujarEfectosNocturnos(QPainter &p);
 
 
+    QRectF areaMinimapa() const;
     void dibujarMinimapa(QPainter &p);
     void seleccionarNodoEnFoco(int id);
 
@@ -124,6 +148,8 @@ public:
     void setSentidoCalle(bool doble);
     void setDestinoProvisional(int idDestino);
     void resaltarNodo(int idNodo);
+    void resaltarRecorridoPasajero(int origen, int destino);
+    void ocultarRecorridoPasajero();
     void resaltarCalle(int origen, int destino);
     void setModoConducir(bool activo);
     void setMostrarPesos(bool mostrar);
@@ -136,4 +162,4 @@ signals:
     void cancelarSolicitado();
 };
 
-#endif // MAPA_WIDGET_H
+#endif
