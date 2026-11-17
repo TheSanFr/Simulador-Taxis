@@ -67,6 +67,7 @@ qt_add_executable(TaxiGraph
     DialogoNodo.cpp
     MainWindow.h
     MainWindow.cpp
+    TransicionesPanel.h
     mainwindow.ui
     nodedialog.ui
 )

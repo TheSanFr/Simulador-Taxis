@@ -2,6 +2,7 @@
 #define MAIN_WINDOW_H
 
 #include <QColor>
+#include <QHash>
 #include <QMainWindow>
 #include <QPointF>
 #include <QString>
@@ -48,6 +49,9 @@ private:
     QTimer temporizadorAviso;
     QString avisoTrayecto;
     bool llegadaManualReciente = false;
+    QVector<double> pesosCotizados;
+    QString periodoCotizado;
+    QHash<int, QString> tarifasVisibles;
 
     struct Evento
     {
@@ -82,6 +86,7 @@ private:
     void configurarPanelGuia();
     void actualizarResumenGrafo();
     void actualizarEstadoSimulacion();
+    void actualizarEspera();
 
 private slots:
     void enPausaCambiada(bool pausada);

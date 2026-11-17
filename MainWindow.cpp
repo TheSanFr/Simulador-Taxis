@@ -15,6 +15,7 @@
 #include "Simulacion.h"
 #include "Taxi.h"
 #include "TaxiManual.h"
+#include "TransicionesPanel.h"
 #include "ui_mainwindow.h"
 
 #include <QAbstractButton>
@@ -88,9 +89,12 @@ void MainWindow::asignarCelda(QTableWidget *tabla, int fila, int col, QString te
         item = new QTableWidgetItem();
         tabla->setItem(fila, col, item);
     }
-    item->setText(texto);
-    item->setForeground(color);
-    item->setTextAlignment(alineacion | Qt::AlignVCenter);
+    if (item->text() != texto)
+        item->setText(texto);
+    if (item->foreground().color() != color || item->foreground().style() == Qt::NoBrush)
+        item->setForeground(color);
+    if (item->textAlignment() != (alineacion | Qt::AlignVCenter))
+        item->setTextAlignment(alineacion | Qt::AlignVCenter);
 }
 
 const Taxi *MainWindow::taxiObservado() const
@@ -742,6 +746,17 @@ void MainWindow::actualizarEstadoSimulacion()
 void MainWindow::actualizarTablas()
 {
     actualizarEstadoSimulacion();
+    const int espera = sim->getPasajerosEnEspera().size();
+    const QString pestanaEspera = QStringLiteral("Espera %1").arg(espera);
+    if (ui->tabs->tabText(1) != pestanaEspera)
+    {
+        ui->tabs->setTabText(1, pestanaEspera);
+        ui->tabs->setTabToolTip(1, QStringLiteral("%1 pasajeros en espera").arg(espera));
+    }
+    if (ui->tabs->currentWidget() == ui->tabPassengers)
+        actualizarEspera();
+    if (ui->tabs->currentWidget() != ui->tabEarnings)
+        return;
     QTableWidget *t = ui->tableTaxis;
     for (int i = 0; i < sim->getCantidadTaxis(); i++)
     {
@@ -754,7 +769,10 @@ void MainWindow::actualizarTablas()
                      tx->esManual() ? QStringLiteral("-") : QString::number(tx->getNodosExplorados()),
                      QColor("#dbe3ef"), Qt::AlignRight);
     }
+}
 
+void MainWindow::actualizarEspera()
+{
     QTableWidget *tp = ui->tablePassengers;
     if (tp->columnCount() != 3)
     {
@@ -774,6 +792,24 @@ void MainWindow::actualizarTablas()
     const QVector<Pasajero> &lista = sim->getPasajerosEnEspera();
     tp->setRowCount(lista.size());
     Grafo *g = sim->getGrafo();
+    if (lista.isEmpty())
+    {
+        tarifasVisibles.clear();
+        return;
+    }
+    const QString periodo = sim->getReloj().periodoActual();
+    QVector<double> pesos;
+    pesos.reserve(g->getAristas()->getCantidad());
+    for (const ElementoArista *e = g->getAristas()->getPrimero(); e != nullptr; e = e->getSiguiente())
+        pesos.append(g->obtenerPesoEfectivoArista(e->getArista()));
+    if (pesosCotizados != pesos || periodoCotizado != periodo)
+    {
+        pesosCotizados = std::move(pesos);
+        periodoCotizado = periodo;
+        tarifasVisibles.clear();
+    }
+    QHash<int, QString> tarifasActuales;
+    tarifasActuales.reserve(lista.size());
     for (int i = 0; i < lista.size(); i++)
     {
         const Pasajero &p = lista[i];
@@ -783,13 +819,13 @@ void MainWindow::actualizarTablas()
                      QColor("#dbe3ef"), Qt::AlignLeft);
         asignarCelda(tp, i, 1, (nd != nullptr) ? nd->getNombre() : QStringLiteral("?"),
                      QColor("#dbe3ef"), Qt::AlignLeft);
-        asignarCelda(tp, i, 2,
-                     Grafo::formatearPesos(sim->cotizarCarrera(p.getOrigen(), p.getDestino())),
-                     QColor("#ffd60a"), Qt::AlignRight);
+        const auto tarifa = tarifasVisibles.constFind(p.getId());
+        const QString importe = tarifa != tarifasVisibles.cend() ? tarifa.value()
+            : Grafo::formatearPesos(sim->cotizarCarrera(p.getOrigen(), p.getDestino()));
+        tarifasActuales.insert(p.getId(), importe);
+        asignarCelda(tp, i, 2, importe, QColor("#ffd60a"), Qt::AlignRight);
     }
-
-    ui->tabs->setTabText(1, QStringLiteral("Espera %1").arg(lista.size()));
-    ui->tabs->setTabToolTip(1, QStringLiteral("%1 pasajeros en espera").arg(lista.size()));
+    tarifasVisibles.swap(tarifasActuales);
 }
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
@@ -856,6 +892,9 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     actualizarResumenGrafo();
 
     connect(sim->getGrafo(), &Grafo::grafoModificado, this, &MainWindow::actualizarResumenGrafo);
+    connect(sim->getGrafo(), &Grafo::grafoModificado, this, [this] {
+        tarifasVisibles.clear();
+    });
     connect(mapaWidget, &MapaWidget::nodoEnFocoCambiado, this, [this](int id) {
         const Nodo *nodo = sim->getGrafo()->buscarNodo(id);
         const QString detalle = nodo != nullptr
@@ -963,6 +1002,8 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     temporizadorTablas.setInterval(250);
     connect(&temporizadorTablas, &QTimer::timeout, this, &MainWindow::actualizarTablas);
     temporizadorTablas.start();
+    connect(ui->tabs, &QTabWidget::currentChanged, this, &MainWindow::actualizarTablas);
+    new TransicionesPanel(ui->tabs);
 
     sim->iniciar();
 }

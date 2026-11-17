@@ -29,8 +29,10 @@
 #include <QRectF>
 #include <QSet>
 #include <QtMath>
+#include <algorithm>
 #include <cmath>
 #include <optional>
+#include <utility>
 
 namespace
 {
@@ -149,7 +151,7 @@ QPointF MapaWidget::posicionDibujoTaxi(const Taxi *taxi) const
 
 void MapaWidget::dibujarMundo(QPainter &p, bool esMinimapa)
 {
-    dibujarEscenario(p);
+    dibujarFondoCiudad(p, esMinimapa);
     dibujarCalles(p, esMinimapa);
     dibujarEfectosNocturnos(p);
     if (!esMinimapa)
@@ -181,6 +183,40 @@ void MapaWidget::dibujarMundo(QPainter &p, bool esMinimapa)
                                  tf.getTexto(), fuentePixel(24, true), c, 3.5);
         }
     }
+}
+
+void MapaWidget::dibujarFondoCiudad(QPainter &p, bool esMinimapa)
+{
+    const QRectF mundo = sim->getLimitesMapa();
+    if (!esMinimapa)
+    {
+        // Reserva acotada para el terreno. Las calles con tráfico se dibujan encima.
+        constexpr double maximoPixeles = 2400000.0;
+        const double escala = qMin(p.worldTransform().m11() * p.device()->devicePixelRatioF(),
+                                   std::sqrt(maximoPixeles / (mundo.width() * mundo.height())));
+        const QSize pixeles(qMax(1, qCeil(mundo.width() * escala)), qMax(1, qCeil(mundo.height() * escala)));
+        if (corredorPendiente || fondoCiudad.size() != pixeles)
+        {
+            fondoCiudad = {};
+            QPixmap nuevo(pixeles);
+            if (!nuevo.isNull())
+            {
+                nuevo.fill(Qt::transparent);
+                {
+                    QPainter terreno(&nuevo);
+                    terreno.setRenderHint(QPainter::Antialiasing);
+                    terreno.scale(pixeles.width() / mundo.width(), pixeles.height() / mundo.height());
+                    terreno.translate(-mundo.left(), -mundo.top());
+                    dibujarEscenario(terreno);
+                }
+                fondoCiudad = std::move(nuevo);
+            }
+        }
+    }
+    if (fondoCiudad.isNull())
+        dibujarEscenario(p);
+    else
+        p.drawPixmap(mundo, fondoCiudad, QRectF(fondoCiudad.rect()));
 }
 
 void MapaWidget::actualizarCorredorCalles()
@@ -892,26 +928,13 @@ void MapaWidget::dibujarNodos(QPainter &p, bool esMinimapa)
             p.restore();
         }
 
-        const bool nombreVisible = especial || resaltado || n->getId() == destinoVisible
-            || !modoConducir;
-        if (!esMinimapa && nombreVisible)
-        {
-            const double escala = p.worldTransform().m11();
-            const int px = qBound(especial ? 16 : 14, qRound(9.0 / escala), 24);
-            const QFont f = fuentePixel(px, especial || resaltado);
-            const QColor c = resaltado || n->getId() == destinoVisible ? textoPrincipal
-                : especial ? mezclarColores(colorTipo, textoSecundario, 0.42) : textoSecundario;
-            const QString nombre = resaltado ? n->getNombre()
-                                            : QFontMetricsF(f).elidedText(n->getNombre(), Qt::ElideRight, 220);
-            dibujarTextoConBorde(p, n->getPosicion() + QPointF(0, especial ? 35 : 27),
-                                 nombre, f, c);
-        }
     }
 
     if (esMinimapa)
     {
         return;
     }
+    dibujarNombresNodos(p, destinoVisible);
 
     if (g->buscarNodo(nodoPendiente) != nullptr)
     {
@@ -920,6 +943,74 @@ void MapaWidget::dibujarNodos(QPainter &p, bool esMinimapa)
         p.drawEllipse(g->buscarNodo(nodoPendiente)->getPosicion(), 25, 25);
     }
 
+}
+
+void MapaWidget::dibujarNombresNodos(QPainter &p, int destinoVisible)
+{
+    const double escala = p.worldTransform().m11();
+    const QFont fuenteNormal = fuentePixel(qBound(14, qRound(11.0 / escala), 35));
+    const QFont fuenteEspecial = fuentePixel(qBound(16, qRound(11.5 / escala), 36), true);
+    if (escalaNombres != escala)
+    {
+        nombresNodos.clear();
+        escalaNombres = escala;
+        const QFontMetricsF medidasNormal(fuenteNormal);
+        const QFontMetricsF medidasEspecial(fuenteEspecial);
+        const QRectF mundo = sim->getLimitesMapa();
+        const QRectF vista = p.clipBoundingRect().intersected(mundo).adjusted(4, 4, -4, -4);
+        QVector<QRectF> ocupados;
+        const ListaNodos *nodos = sim->getGrafo()->getNodos();
+        nombresNodos.reserve(nodos->getCantidad());
+        ocupados.reserve(nodos->getCantidad());
+
+        for (const ElementoNodo *e = nodos->getPrimero(); e != nullptr; e = e->getSiguiente())
+        {
+            const Nodo *nodo = e->getNodo();
+            if (nodo == nullptr)
+                continue;
+            const bool especial = nodo->getTipo() != "Normal";
+            const QFontMetricsF &medidas = especial ? medidasEspecial : medidasNormal;
+            QStaticText texto(medidas.elidedText(nodo->getNombre(), Qt::ElideRight, qRound(145.0 / escala)));
+            texto.setTextFormat(Qt::PlainText);
+            texto.prepare(p.worldTransform(), especial ? fuenteEspecial : fuenteNormal);
+            const QSizeF tamano = texto.size();
+            const QPointF pos = nodo->getPosicion();
+            const double x = qBound(vista.left(), pos.x() - tamano.width() / 2,
+                                    qMax(vista.left(), vista.right() - tamano.width()));
+            const QRectF debajo(QPointF(x, pos.y() + (especial ? 22 : 18)), tamano);
+            QRectF caja = debajo;
+            for (const QPointF &alternativa : {debajo.topLeft(), QPointF(x, pos.y() - 43 - tamano.height()),
+                                              pos + QPointF(22, 10), pos + QPointF(-22 - tamano.width(), 10)})
+            {
+                const QRectF candidata(alternativa, tamano);
+                if (vista.contains(candidata) && std::none_of(ocupados.cbegin(), ocupados.cend(),
+                    [&candidata](const QRectF &ocupado) { return ocupado.intersects(candidata); }))
+                {
+                    caja = candidata;
+                    break;
+                }
+            }
+            ocupados.append(caja.adjusted(-3, -2, 3, 2));
+            const QColor color = especial ? mezclarColores(obtenerColorTipoNodo(nodo->getTipo()), textoSecundario, 0.38)
+                                          : QColor("#d0d8d4");
+            nombresNodos.append({nodo->getId(), caja.topLeft(), std::move(texto), color, especial});
+        }
+    }
+    p.save();
+    p.setPen(QColor("#151917"));
+    const QPointF sombra(0.8 / escala, 1.15 / escala);
+    for (const NombreNodo &nombre : nombresNodos)
+    {
+        p.setFont(nombre.especial ? fuenteEspecial : fuenteNormal);
+        p.drawStaticText(nombre.posicion + sombra, nombre.texto);
+    }
+    for (const NombreNodo &nombre : nombresNodos)
+    {
+        p.setFont(nombre.especial ? fuenteEspecial : fuenteNormal);
+        p.setPen(nombre.id == nodoBajoMouse || nombre.id == destinoVisible ? textoPrincipal : nombre.color);
+        p.drawStaticText(nombre.posicion, nombre.texto);
+    }
+    p.restore();
 }
 
 void MapaWidget::dibujarPasajeros(QPainter &p, bool esMinimapa)
@@ -1141,10 +1232,14 @@ void MapaWidget::dibujarMinimapa(QPainter &p)
 
 void MapaWidget::enCuadro(double dt)
 {
-    double meta = sim->getReloj().oscuridad();
+    const double meta = sim->getReloj().oscuridad();
+    const bool cambiaLuz = oscuridad != meta;
+    const bool hayAviso = !textosFlotantes.isEmpty();
     double factor = dt * 2.5;
     if (factor > 1.0) factor = 1.0;
     oscuridad += (meta - oscuridad) * factor;
+    if (qAbs(meta - oscuridad) < 0.001)
+        oscuridad = meta;
 
     for (int i = textosFlotantes.size() - 1; i >= 0; i--)
     {
@@ -1154,7 +1249,8 @@ void MapaWidget::enCuadro(double dt)
             textosFlotantes.removeAt(i);
         }
     }
-    update();
+    if (!sim->estaPausada() || cambiaLuz || hayAviso)
+        update();
 }
 
 void MapaWidget::enCarreraCompletada(int idTaxi, QPointF pos, double tarifa, QColor color)
@@ -1316,6 +1412,7 @@ void MapaWidget::setSimulacion(Simulacion *nuevaSim)
 {
     sim = nuevaSim;
     corredorPendiente = true;
+    escalaNombres = 0.0;
     connect(sim, &Simulacion::cuadroActualizado, this, &MapaWidget::enCuadro);
     connect(sim, &Simulacion::carreraCompletada, this, &MapaWidget::enCarreraCompletada);
     connect(sim, &Simulacion::pasajeroRecogido, this, [this](int idTaxi, int origen, int) {
@@ -1328,6 +1425,7 @@ void MapaWidget::setSimulacion(Simulacion *nuevaSim)
     });
     connect(sim->getGrafo(), &Grafo::grafoModificado, this, [this] {
         corredorPendiente = true;
+        escalaNombres = 0.0;
         if (!sim->getGrafo()->tieneNodo(nodoBajoMouse))
         {
             seleccionarNodoEnFoco(-1);
@@ -1389,6 +1487,7 @@ void MapaWidget::resaltarCalle(int origen, int destino)
 void MapaWidget::setModoConducir(bool activo)
 {
     modoConducir = activo;
+    escalaNombres = 0.0;
     if (activo)
         destinoProvisional = -1;
     update();

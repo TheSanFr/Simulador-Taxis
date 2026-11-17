@@ -4,7 +4,9 @@
 #include <QColor>
 #include <QFont>
 #include <QPainterPath>
+#include <QPixmap>
 #include <QPointF>
+#include <QStaticText>
 #include <QString>
 #include <QTransform>
 #include <QVariantAnimation>
@@ -40,6 +42,17 @@ private:
     QPainterPath terrenoDisponible;
     QPainterPath plataformaPuentes;
     bool corredorPendiente = true;
+    QPixmap fondoCiudad;
+    struct NombreNodo
+    {
+        int id;
+        QPointF posicion;
+        QStaticText texto;
+        QColor color;
+        bool especial;
+    };
+    QVector<NombreNodo> nombresNodos;
+    double escalaNombres = 0.0;
     bool modoConducir;
     bool mostrarPesos;
     int taxiEnFoco = -1;
@@ -63,6 +76,8 @@ private:
     void dibujarMundo(QPainter &p, bool esMinimapa);
 
     void dibujarEscenario(QPainter &p);
+    void dibujarFondoCiudad(QPainter &p, bool esMinimapa);
+    void dibujarNombresNodos(QPainter &p, int destinoVisible);
     void actualizarCorredorCalles();
     void dibujarVistaPreviaEdicion(QPainter &p);
     void dibujarConfirmacion(QPainter &p);
