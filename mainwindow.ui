@@ -1,4 +1,3 @@
-<?xml version="1.0" encoding="UTF-8"?>
 <ui version="4.0">
  <class>MainWindow</class>
  <widget class="QMainWindow" name="MainWindow">
@@ -6,30 +5,218 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>1600</width>
-    <height>940</height>
+    <width>1360</width>
+    <height>800</height>
    </rect>
   </property>
   <property name="windowTitle">
-   <string>TaxiGraph - Simulador de taxis sobre un grafo dirigido y ponderado</string>
+   <string>TaxiGraph</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QHBoxLayout" name="layoutMain">
+   <layout class="QVBoxLayout" name="layoutMain">
     <property name="spacing">
-     <number>0</number>
+     <number>8</number>
     </property>
     <property name="leftMargin">
-     <number>6</number>
+     <number>18</number>
     </property>
     <property name="topMargin">
-     <number>6</number>
+     <number>12</number>
     </property>
     <property name="rightMargin">
-     <number>6</number>
+     <number>18</number>
     </property>
     <property name="bottomMargin">
-     <number>6</number>
+     <number>8</number>
     </property>
+    <item>
+     <widget class="QWidget" name="appHeader">
+      <property name="sizePolicy">
+       <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+        <horstretch>0</horstretch>
+        <verstretch>0</verstretch>
+       </sizepolicy>
+      </property>
+      <layout class="QHBoxLayout" name="layoutAppHeader">
+       <property name="spacing">
+        <number>9</number>
+       </property>
+       <property name="leftMargin">
+        <number>0</number>
+       </property>
+       <property name="topMargin">
+        <number>0</number>
+       </property>
+       <property name="rightMargin">
+        <number>0</number>
+       </property>
+       <property name="bottomMargin">
+        <number>8</number>
+       </property>
+       <item>
+        <widget class="QLabel" name="lblProduct">
+         <property name="text">
+          <string>TaxiGraph</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="spacerAppHeader">
+         <property name="sizeHint">
+          <size>
+           <width>16</width>
+           <height>10</height>
+          </size>
+         </property>
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupSim">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Preferred" vsizetype="Fixed">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="title">
+          <string />
+         </property>
+         <property name="flat">
+          <bool>true</bool>
+         </property>
+         <layout class="QHBoxLayout" name="gridSim">
+          <property name="spacing">
+           <number>9</number>
+          </property>
+          <property name="leftMargin">
+           <number>0</number>
+          </property>
+          <property name="topMargin">
+           <number>0</number>
+          </property>
+          <property name="rightMargin">
+           <number>0</number>
+          </property>
+          <property name="bottomMargin">
+           <number>0</number>
+          </property>
+          <item>
+           <widget class="QPushButton" name="btnPause">
+            <property name="minimumSize">
+             <size>
+              <width>102</width>
+              <height>34</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Pausar</string>
+            </property>
+            <property name="checkable">
+             <bool>true</bool>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnReset">
+            <property name="minimumSize">
+             <size>
+              <width>94</width>
+              <height>34</height>
+             </size>
+            </property>
+            <property name="text">
+             <string>Reiniciar</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QLabel" name="lblSpeed">
+            <property name="text">
+             <string>Velocidad</string>
+            </property>
+            <property name="buddy">
+             <cstring>comboSpeed</cstring>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="comboSpeed">
+            <property name="minimumSize">
+             <size>
+              <width>62</width>
+              <height>34</height>
+             </size>
+            </property>
+            <item>
+             <property name="text">
+              <string>1x</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>2x</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>4x</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+          <item>
+           <widget name="lblGraphClock" class="QLabel">
+            <property name="text">
+             <string />
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget name="lblGraphPeriod" class="QLabel">
+            <property name="text">
+             <string />
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="comboTimeMode">
+            <property name="minimumSize">
+             <size>
+              <width>188</width>
+              <height>34</height>
+             </size>
+            </property>
+            <item>
+             <property name="text">
+              <string>Automático (según el reloj)</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Normal</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Nocturno (+$2,000)</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Hora pico (pesos x1.8)</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </widget>
+    </item>
     <item>
      <widget class="QSplitter" name="splitter">
       <property name="orientation">
@@ -37,6 +224,9 @@
       </property>
       <property name="childrenCollapsible">
        <bool>false</bool>
+      </property>
+      <property name="handleWidth">
+       <number>8</number>
       </property>
       <widget class="QWidget" name="mapHost">
        <property name="sizePolicy">
@@ -47,35 +237,10 @@
        </property>
        <layout class="QVBoxLayout" name="layoutMapHost">
         <property name="spacing">
-         <number>0</number>
+         <number>6</number>
         </property>
         <property name="leftMargin">
          <number>0</number>
-        </property>
-        <property name="topMargin">
-         <number>0</number>
-        </property>
-        <property name="rightMargin">
-         <number>0</number>
-        </property>
-        <property name="bottomMargin">
-         <number>0</number>
-        </property>
-       </layout>
-      </widget>
-      <widget class="QWidget" name="sidePanel">
-       <property name="minimumSize">
-        <size>
-         <width>440</width>
-         <height>0</height>
-        </size>
-       </property>
-       <layout class="QVBoxLayout" name="layoutSide">
-        <property name="spacing">
-         <number>8</number>
-        </property>
-        <property name="leftMargin">
-         <number>8</number>
         </property>
         <property name="topMargin">
          <number>0</number>
@@ -87,111 +252,72 @@
          <number>0</number>
         </property>
         <item>
-         <widget class="QGroupBox" name="groupSim">
-          <property name="title">
-           <string>Simulación</string>
+         <widget class="QGroupBox" name="groupEdit">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Fixed">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
           </property>
-          <layout class="QGridLayout" name="gridSim">
-           <item row="3" column="0" colspan="2">
-            <widget class="QCheckBox" name="chkWeights">
-             <property name="text">
-              <string>Mostrar pesos de las calles</string>
-             </property>
-             <property name="checked">
-              <bool>true</bool>
-             </property>
-            </widget>
-           </item>
-           <item row="0" column="0">
-            <widget class="QPushButton" name="btnPause">
-             <property name="text">
-              <string>Pausar</string>
+          <property name="title">
+           <string />
+          </property>
+          <property name="flat">
+           <bool>true</bool>
+          </property>
+          <layout class="QHBoxLayout" name="layoutEdit">
+           <property name="spacing">
+            <number>8</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>0</number>
+           </property>
+           <item>
+            <widget class="QPushButton" name="btnDriveMode">
+             <property name="autoDefault">
+              <bool>false</bool>
              </property>
              <property name="checkable">
               <bool>true</bool>
              </property>
-            </widget>
-           </item>
-           <item row="0" column="1">
-            <widget class="QPushButton" name="btnReset">
              <property name="text">
-              <string>Reiniciar</string>
+              <string>Conducir</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="0">
-            <widget class="QLabel" name="lblSpeed">
+           <item>
+            <widget class="QPushButton" name="btnEditMode">
+             <property name="autoDefault">
+              <bool>false</bool>
+             </property>
+             <property name="checkable">
+              <bool>true</bool>
+             </property>
              <property name="text">
-              <string>Velocidad</string>
+              <string>Editar mapa</string>
              </property>
             </widget>
            </item>
-           <item row="1" column="1">
-            <widget class="QComboBox" name="comboSpeed">
-             <item>
-              <property name="text">
-               <string>1x</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>2x</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>4x</string>
-              </property>
-             </item>
-            </widget>
-           </item>
-           <item row="2" column="0">
-            <widget class="QLabel" name="lblTimeMode">
-             <property name="text">
-              <string>Modo del día</string>
-             </property>
-            </widget>
-           </item>
-           <item row="2" column="1">
-            <widget class="QComboBox" name="comboTimeMode">
-             <item>
-              <property name="text">
-               <string>Automático (según el reloj)</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Normal</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Nocturno (+$2,000)</string>
-              </property>
-             </item>
-             <item>
-              <property name="text">
-               <string>Hora pico (pesos x1.8)</string>
-              </property>
-             </item>
-            </widget>
-           </item>
-          </layout>
-         </widget>
-        </item>
-        <item>
-         <widget class="QGroupBox" name="groupEdit">
-          <property name="title">
-           <string>Mapa y edición del grafo</string>
-          </property>
-          <layout class="QVBoxLayout" name="layoutEdit">
            <item>
             <widget class="QComboBox" name="comboEditMode">
-             <item>
-              <property name="text">
-               <string>Conducir mi taxi</string>
-              </property>
-             </item>
+             <property name="minimumSize">
+              <size>
+               <width>128</width>
+               <height>32</height>
+              </size>
+             </property>
+             <property name="accessibleName">
+              <string>Herramienta de edición</string>
+             </property>
              <item>
               <property name="text">
                <string>Agregar nodo</string>
@@ -214,18 +340,249 @@
              </item>
              <item>
               <property name="text">
-               <string>Cambiar peso de una calle</string>
+               <string>Cambiar peso</string>
               </property>
              </item>
             </widget>
            </item>
            <item>
             <widget class="QLabel" name="lblEditHint">
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+               <horstretch>0</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
              <property name="text">
-              <string/>
+              <string />
              </property>
              <property name="wordWrap">
               <bool>true</bool>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboSentidoCalle">
+             <property name="accessibleName">
+              <string>Sentido de la calle</string>
+             </property>
+             <item>
+              <property name="text">
+               <string>Doble sentido</string>
+              </property>
+             </item>
+             <item>
+              <property name="text">
+               <string>Un sentido</string>
+              </property>
+             </item>
+            </widget>
+           </item>
+           <item>
+            <widget class="QPushButton" name="btnConstruirCalle">
+             <property name="text">
+              <string>Construir</string>
+             </property>
+             <property name="toolTip">
+              <string>Confirma la calle y los cruces de la vista previa. Atajo: Enter.</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QCheckBox" name="chkWeights">
+             <property name="text">
+              <string>Mostrar pesos</string>
+             </property>
+             <property name="checked">
+              <bool>false</bool>
+             </property>
+             <property name="toolTip">
+              <string>Muestra el peso de cada calle en el mapa.</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="lblMapTaxi">
+             <property name="text">
+              <string>Rutas</string>
+             </property>
+             <property name="buddy">
+              <cstring>comboMapTaxi</cstring>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QComboBox" name="comboMapTaxi">
+             <property name="accessibleName">
+              <string>Trayectorias destacadas en el mapa</string>
+             </property>
+             <property name="toolTip">
+              <string>Todos los taxis se ven en el mapa. Elige qué trayectorias y destinos quieres destacar.</string>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+        <item>
+         <widget name="graphLegend" class="QWidget">
+          <layout name="layoutGraphLegend" class="QHBoxLayout">
+           <property name="spacing">
+            <number>10</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>1</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>1</number>
+           </property>
+           <item>
+            <widget name="lblOneWayKey" class="QLabel">
+             <property name="text">
+              <string>› Sentido de la calle</string>
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget name="lblGraphCounts" class="QLabel">
+             <property name="text">
+              <string />
+             </property>
+            </widget>
+           </item>
+           <item>
+            <spacer name="spacerGraphLegend">
+             <property name="orientation">
+              <enum>Qt::Horizontal</enum>
+             </property>
+             <property name="sizeHint">
+              <size>
+               <width>8</width>
+               <height>8</height>
+              </size>
+             </property>
+            </spacer>
+           </item>
+           <item>
+            <widget name="lblNodeFocus" class="QLabel">
+             <property name="text">
+              <string />
+             </property>
+             <property name="sizePolicy">
+              <sizepolicy hsizetype="Ignored" vsizetype="Preferred">
+               <horstretch>1</horstretch>
+               <verstretch>0</verstretch>
+              </sizepolicy>
+             </property>
+            </widget>
+           </item>
+          </layout>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+      <widget class="QWidget" name="sidePanel">
+       <property name="minimumSize">
+        <size>
+         <width>350</width>
+         <height>0</height>
+        </size>
+       </property>
+       <layout class="QVBoxLayout" name="layoutSide" stretch="0,1">
+        <property name="spacing">
+         <number>17</number>
+        </property>
+        <property name="leftMargin">
+         <number>15</number>
+        </property>
+        <property name="topMargin">
+         <number>11</number>
+        </property>
+        <property name="rightMargin">
+         <number>12</number>
+        </property>
+        <property name="bottomMargin">
+         <number>11</number>
+        </property>
+        <item>
+         <widget name="manualSummary" class="QWidget">
+          <layout name="layoutManualSummary" class="QVBoxLayout">
+           <property name="spacing">
+            <number>6</number>
+           </property>
+           <property name="leftMargin">
+            <number>0</number>
+           </property>
+           <property name="topMargin">
+            <number>0</number>
+           </property>
+           <property name="rightMargin">
+            <number>0</number>
+           </property>
+           <property name="bottomMargin">
+            <number>12</number>
+           </property>
+           <item>
+            <layout name="layoutManualNumbers" class="QHBoxLayout">
+             <item>
+              <widget name="lblManualTitle" class="QLabel">
+               <property name="text">
+                <string>Tu taxi</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="spacerManualNumbers">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+               <property name="sizeHint">
+                <size>
+                 <width>8</width>
+                 <height>8</height>
+                </size>
+               </property>
+              </spacer>
+             </item>
+             <item>
+              <widget name="lblManualTrips" class="QLabel">
+               <property name="text">
+                <string />
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget name="lblManualIncome" class="QLabel">
+               <property name="text">
+                <string />
+               </property>
+              </widget>
+             </item>
+            </layout>
+           </item>
+           <item>
+            <widget name="lblManualState" class="QLabel">
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+             <property name="text">
+              <string />
+             </property>
+            </widget>
+           </item>
+           <item>
+            <widget class="QLabel" name="lblManualDetail">
+             <property name="wordWrap">
+              <bool>true</bool>
+             </property>
+             <property name="text">
+              <string />
              </property>
             </widget>
            </item>
@@ -234,38 +591,44 @@
         </item>
         <item>
          <widget class="QTabWidget" name="tabs">
+          <property name="sizePolicy">
+           <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+            <horstretch>0</horstretch>
+            <verstretch>0</verstretch>
+           </sizepolicy>
+          </property>
           <property name="currentIndex">
            <number>0</number>
           </property>
+          <property name="usesScrollButtons">
+           <bool>true</bool>
+          </property>
           <widget class="QWidget" name="tabEarnings">
            <attribute name="title">
-            <string>Ganancias</string>
+            <string>Taxis</string>
            </attribute>
-           <layout class="QVBoxLayout" name="layoutEarnings">
-            <item>
-             <widget class="QWidget" name="barsHost" native="true">
-             <layout class="QVBoxLayout" name="layoutBarsHost">
-              <property name="leftMargin">
-               <number>0</number>
-              </property>
-              <property name="topMargin">
-               <number>0</number>
-              </property>
-              <property name="rightMargin">
-               <number>0</number>
-              </property>
-              <property name="bottomMargin">
-               <number>0</number>
-              </property>
-             </layout>
-            </widget>
-            </item>
+           <layout class="QVBoxLayout" name="layoutEarnings" stretch="1">
+            <property name="spacing">
+             <number>8</number>
+            </property>
+            <property name="leftMargin">
+             <number>4</number>
+            </property>
+            <property name="topMargin">
+             <number>8</number>
+            </property>
+            <property name="rightMargin">
+             <number>4</number>
+            </property>
+            <property name="bottomMargin">
+             <number>4</number>
+            </property>
             <item>
              <widget class="QTableWidget" name="tableTaxis">
               <property name="minimumSize">
                <size>
                 <width>0</width>
-                <height>210</height>
+                <height>158</height>
                </size>
               </property>
              </widget>
@@ -277,33 +640,104 @@
             <string>Pasajeros</string>
            </attribute>
            <layout class="QVBoxLayout" name="layoutPassengers">
+            <property name="spacing">
+             <number>8</number>
+            </property>
+            <property name="leftMargin">
+             <number>4</number>
+            </property>
+            <property name="topMargin">
+             <number>8</number>
+            </property>
+            <property name="rightMargin">
+             <number>4</number>
+            </property>
+            <property name="bottomMargin">
+             <number>4</number>
+            </property>
             <item>
-             <widget class="QTableWidget" name="tablePassengers"/>
+             <widget class="QLabel" name="lblEsperaVacia">
+              <property name="text">
+               <string>No hay pasajeros en espera.</string>
+              </property>
+              <property name="alignment">
+               <set>Qt::AlignHCenter|Qt::AlignTop</set>
+              </property>
+              <property name="margin">
+               <number>12</number>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QTableWidget" name="tablePassengers">
+              <property name="accessibleName">
+               <string>Pasajeros en espera</string>
+              </property>
+              <property name="accessibleDescription">
+               <string>Activa una fila para localizar la recogida y el destino en el mapa.</string>
+              </property>
+             </widget>
             </item>
            </layout>
           </widget>
           <widget class="QWidget" name="tabChart">
            <attribute name="title">
-            <string>Gráfico</string>
+            <string>Ingresos</string>
            </attribute>
-           <layout class="QVBoxLayout" name="layoutChart">
+           <layout class="QVBoxLayout" name="layoutChart" stretch="0,1">
+            <property name="spacing">
+             <number>8</number>
+            </property>
+            <property name="leftMargin">
+             <number>4</number>
+            </property>
+            <property name="topMargin">
+             <number>8</number>
+            </property>
+            <property name="rightMargin">
+             <number>4</number>
+            </property>
+            <property name="bottomMargin">
+             <number>4</number>
+            </property>
+            <item>
+             <widget class="QWidget" name="barsHost" native="true">
+              <layout class="QVBoxLayout" name="layoutBarsHost">
+               <property name="leftMargin">
+                <number>0</number>
+               </property>
+               <property name="topMargin">
+                <number>0</number>
+               </property>
+               <property name="rightMargin">
+                <number>0</number>
+               </property>
+               <property name="bottomMargin">
+                <number>0</number>
+               </property>
+              </layout>
+             </widget>
+            </item>
             <item>
              <widget class="QWidget" name="chartHost" native="true">
-             <layout class="QVBoxLayout" name="layoutChartHost">
-              <property name="leftMargin">
-               <number>0</number>
-              </property>
-              <property name="topMargin">
-               <number>0</number>
-              </property>
-              <property name="rightMargin">
-               <number>0</number>
-              </property>
-              <property name="bottomMargin">
-               <number>0</number>
-              </property>
-             </layout>
-            </widget>
+              <layout class="QVBoxLayout" name="layoutChartHost">
+               <property name="leftMargin">
+                <number>0</number>
+               </property>
+               <property name="topMargin">
+                <number>0</number>
+               </property>
+               <property name="rightMargin">
+                <number>0</number>
+               </property>
+               <property name="bottomMargin">
+                <number>0</number>
+               </property>
+              </layout>
+             </widget>
             </item>
            </layout>
           </widget>
@@ -312,9 +746,50 @@
             <string>Eventos</string>
            </attribute>
            <layout class="QVBoxLayout" name="layoutLog">
+            <property name="spacing">
+             <number>8</number>
+            </property>
+            <property name="leftMargin">
+             <number>4</number>
+            </property>
+            <property name="topMargin">
+             <number>8</number>
+            </property>
+            <property name="rightMargin">
+             <number>4</number>
+            </property>
+            <property name="bottomMargin">
+             <number>4</number>
+            </property>
             <item>
-             <widget class="QTextEdit" name="txtLog">
-              <property name="readOnly">
+             <widget class="QComboBox" name="comboFiltroEventos">
+              <property name="accessibleName">
+               <string>Filtrar eventos</string>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QListWidget" name="listaEventos">
+              <property name="accessibleName">
+               <string>Historial de eventos</string>
+              </property>
+              <property name="wordWrap">
+               <bool>true</bool>
+              </property>
+              <property name="horizontalScrollBarPolicy">
+               <enum>Qt::ScrollBarAlwaysOff</enum>
+              </property>
+              <property name="verticalScrollMode">
+               <enum>QAbstractItemView::ScrollPerPixel</enum>
+              </property>
+             </widget>
+            </item>
+            <item>
+             <widget class="QLabel" name="lblEventosVacio">
+              <property name="text">
+               <string>Todavía no hay eventos en esta vista.</string>
+              </property>
+              <property name="wordWrap">
                <bool>true</bool>
               </property>
              </widget>
@@ -326,8 +801,23 @@
             <string>Guía</string>
            </attribute>
            <layout class="QVBoxLayout" name="layoutInfo">
+            <property name="spacing">
+             <number>8</number>
+            </property>
+            <property name="leftMargin">
+             <number>4</number>
+            </property>
+            <property name="topMargin">
+             <number>8</number>
+            </property>
+            <property name="rightMargin">
+             <number>4</number>
+            </property>
+            <property name="bottomMargin">
+             <number>4</number>
+            </property>
             <item>
-             <widget class="QTextBrowser" name="txtInfo"/>
+             <widget class="QTextBrowser" name="txtInfo" />
             </item>
            </layout>
           </widget>
@@ -339,8 +829,8 @@
     </item>
    </layout>
   </widget>
-  <widget class="QStatusBar" name="statusbar"/>
+  <widget class="QStatusBar" name="statusbar" />
  </widget>
- <resources/>
- <connections/>
+ <resources />
+ <connections />
 </ui>

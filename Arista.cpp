@@ -1,33 +1,60 @@
-#pragma once
+#include "Arista.h"
 
-class Arista
+Arista::Arista(int origen, int destino, double peso, bool esAvenida)
 {
-private:
-    int origen;
-    int destino;
-    double peso;
-    double pesoInicial;
-    bool esAvenida;
+    this->origen = origen;
+    this->destino = destino;
+    this->peso = peso;
+    this->pesoInicial = peso;
+    this->esAvenida = esAvenida;
+}
 
-public:
-    Arista(int origen, int destino, double peso, bool esAvenida)
-    {
-        this->origen = origen;
-        this->destino = destino;
-        this->peso = peso;
-        this->pesoInicial = peso;
-        this->esAvenida = esAvenida;
-    }
+int Arista::getOrigen() const
+{
+    return origen;
+}
 
-    int getOrigen() const { return origen; }
-    int getDestino() const { return destino; }
-    double getPeso() const { return peso; }
-    double getPesoInicial() const { return pesoInicial; }
-    bool getEsAvenida() const { return esAvenida; }
+int Arista::getDestino() const
+{
+    return destino;
+}
 
-    void setOrigen(int origen) { this->origen = origen; }
-    void setDestino(int destino) { this->destino = destino; }
-    void setPeso(double peso) { this->peso = peso; }
-    void setPesoInicial(double pesoInicial) { this->pesoInicial = pesoInicial; }
-    void setEsAvenida(bool esAvenida) { this->esAvenida = esAvenida; }
-};
+double Arista::getPeso() const
+{
+    return peso;
+}
+
+double Arista::getPesoInicial() const
+{
+    return pesoInicial;
+}
+
+bool Arista::getEsAvenida() const
+{
+    return esAvenida;
+}
+
+void Arista::setOrigen(int origen)
+{
+    this->origen = origen;
+}
+
+void Arista::setDestino(int destino)
+{
+    this->destino = destino;
+}
+
+void Arista::setPeso(double peso)
+{
+    this->peso = peso;
+}
+
+void Arista::setPesoInicial(double pesoInicial)
+{
+    this->pesoInicial = pesoInicial;
+}
+
+void Arista::setEsAvenida(bool esAvenida)
+{
+    this->esAvenida = esAvenida;
+}

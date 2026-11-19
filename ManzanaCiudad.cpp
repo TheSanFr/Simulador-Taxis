@@ -1,21 +1,17 @@
-#pragma once
+#include "ManzanaCiudad.h"
 
-#include <QPolygonF>
-#include <QString>
-
-class ManzanaCiudad
+ManzanaCiudad::ManzanaCiudad(QPolygonF poligono, QString tipo)
 {
-private:
-    QPolygonF poligono;
-    QString tipo;
+    this->poligono = poligono;
+    this->tipo = tipo;
+}
 
-public:
-    ManzanaCiudad(QPolygonF poligono, QString tipo)
-    {
-        this->poligono = poligono;
-        this->tipo = tipo;
-    }
+QPolygonF ManzanaCiudad::getPoligono() const
+{
+    return poligono;
+}
 
-    QPolygonF getPoligono() const { return poligono; }
-    QString getTipo() const { return tipo; }
-};
+QString ManzanaCiudad::getTipo() const
+{
+    return tipo;
+}

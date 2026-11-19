@@ -1,0 +1,4 @@
+# Qt Creator local settings and CMake build output
+/.qtcreator/
+/*.user
+/build/

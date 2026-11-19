@@ -1,21 +1,22 @@
-#pragma once
+#include "ElementoNodo.h"
 
-#include "Nodo.cpp"
-
-class ElementoNodo
+ElementoNodo::ElementoNodo(Nodo *nodo)
 {
-private:
-    Nodo *nodo;
-    ElementoNodo *siguiente;
+    this->nodo = nodo;
+    this->siguiente = nullptr;
+}
 
-public:
-    ElementoNodo(Nodo *nodo)
-    {
-        this->nodo = nodo;
-        this->siguiente = nullptr;
-    }
+Nodo *ElementoNodo::getNodo() const
+{
+    return nodo;
+}
 
-    Nodo *getNodo() const { return nodo; }
-    ElementoNodo *getSiguiente() const { return siguiente; }
-    void setSiguiente(ElementoNodo *siguiente) { this->siguiente = siguiente; }
-};
+ElementoNodo *ElementoNodo::getSiguiente() const
+{
+    return siguiente;
+}
+
+void ElementoNodo::setSiguiente(ElementoNodo *siguiente)
+{
+    this->siguiente = siguiente;
+}
