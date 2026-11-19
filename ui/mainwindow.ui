@@ -10,7 +10,7 @@
    </rect>
   </property>
   <property name="windowTitle">
-   <string>TaxiGraph</string>
+   <string>OnDrive</string>
   </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="layoutMain">
@@ -56,7 +56,7 @@
        <item>
         <widget class="QLabel" name="lblProduct">
          <property name="text">
-          <string>TaxiGraph</string>
+          <string>OnDrive</string>
          </property>
         </widget>
        </item>

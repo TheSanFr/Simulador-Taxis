@@ -1,11 +1,11 @@
-# TaxiGraph
+# OnDrive
 
 Simulador de taxis de escritorio desarrollado en C++17 con Qt 6 Widgets y Charts. La ciudad es un grafo dirigido y ponderado. Circulan seis taxis autónomos, dos por algoritmo BFS, DFS y Dijkstra, y un taxi controlado por el usuario.
 
 ## Estructura del proyecto
 
 ```text
-TaxiGraph/
+OnDrive/
 ├── CMakeLists.txt
 ├── README.md
 ├── src/
@@ -94,7 +94,7 @@ Se necesita CMake 3.21 o posterior, un compilador con C++17 y Qt 6 con Widgets y
 1. Abre el `CMakeLists.txt` de la raíz.
 2. Selecciona el kit Qt 6 MinGW de 64 bits.
 3. Configura un directorio de compilación nuevo, por ejemplo `build/QtCreator-Release`, y el tipo `Release`.
-4. Compila y ejecuta el objetivo `TaxiGraph`.
+4. Compila y ejecuta el objetivo `OnDrive`.
 
 Después de cambiar la ubicación del repositorio o su distribución, usa una configuración nueva. La caché de CMake guarda rutas absolutas al directorio fuente y a sus herramientas.
 
@@ -116,7 +116,7 @@ $env:PATH = "C:\Qt\Tools\mingw1310_64\bin;$qt\bin;" + $env:PATH
     "-DCMAKE_MAKE_PROGRAM=$ninja"
 
 & $cmake --build 'build/Release' --parallel 3
-& '.\build\Release\TaxiGraph.exe'
+& '.\build\Release\OnDrive.exe'
 ```
 
 El ejecutable requiere las bibliotecas de Qt. Los comandos anteriores las hacen accesibles mediante `PATH` durante el desarrollo. Para distribuir la aplicación en otro equipo, prepara una carpeta de entrega con las dependencias mediante `windeployqt` del mismo kit utilizado para compilar.

@@ -1,6 +1,6 @@
-﻿cmake_minimum_required(VERSION 3.21)
+cmake_minimum_required(VERSION 3.21)
 
-project(TaxiGraph VERSION 1.0 LANGUAGES CXX)
+project(OnDrive VERSION 1.0 LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -11,7 +11,7 @@ set(CMAKE_AUTOUIC_SEARCH_PATHS "${CMAKE_CURRENT_SOURCE_DIR}/ui")
 find_package(Qt6 REQUIRED COMPONENTS Widgets Charts)
 qt_standard_project_setup()
 
-qt_add_executable(TaxiGraph
+qt_add_executable(OnDrive
     src/estructuras/Cola.cpp
     src/estructuras/Cola.h
     src/estructuras/ElementoArista.cpp
@@ -71,13 +71,13 @@ qt_add_executable(TaxiGraph
     ui/nodedialog.ui
 )
 
-target_include_directories(TaxiGraph PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
+target_include_directories(OnDrive PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/src")
 
 if(MSVC)
-    target_compile_options(TaxiGraph PRIVATE /utf-8)
+    target_compile_options(OnDrive PRIVATE /utf-8)
 endif()
 
-qt_add_resources(TaxiGraph "interfaz"
+qt_add_resources(OnDrive "interfaz"
     PREFIX "/"
     BASE "recursos"
     FILES
@@ -85,8 +85,8 @@ qt_add_resources(TaxiGraph "interfaz"
         recursos/flecha-selector.png
 )
 
-target_link_libraries(TaxiGraph PRIVATE Qt6::Widgets Qt6::Charts)
+target_link_libraries(OnDrive PRIVATE Qt6::Widgets Qt6::Charts)
 
-set_target_properties(TaxiGraph PROPERTIES
+set_target_properties(OnDrive PROPERTIES
     WIN32_EXECUTABLE TRUE
 )

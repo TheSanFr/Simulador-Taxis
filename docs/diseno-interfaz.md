@@ -1,10 +1,10 @@
-# TaxiGraph · Dirección de diseño
+# OnDrive · Dirección de diseño
 
 ## Diagnóstico de la captura
 
-La ciudad ya le da identidad a TaxiGraph. Tiene manzanas, puntos reconocibles y taxis que se mueven sobre un grafo editable. El efecto de plantilla aparece en la jerarquía que rodea ese mapa. La cabecera, el título del grafo, la barra de modo y la leyenda son cuatro franjas de peso similar. En la derecha, tres bandas explicativas desplazan la tabla y repiten información disponible en la Guía. Dentro del mapa, el rosa de las calles y sus flechas repetidas tiene más peso que el taxi manual y el destino.
+La ciudad ya le da identidad a OnDrive. Tiene manzanas, puntos reconocibles y taxis que se mueven sobre un grafo editable. El efecto de plantilla aparece en la jerarquía que rodea ese mapa. La cabecera, el título del grafo, la barra de modo y la leyenda son cuatro franjas de peso similar. En la derecha, tres bandas explicativas desplazan la tabla y repiten información disponible en la Guía. Dentro del mapa, el rosa de las calles y sus flechas repetidas tiene más peso que el taxi manual y el destino.
 
-La interfaz debe responder en unos segundos a tres preguntas de una demostración: qué está ocurriendo en la ciudad, qué puede hacer el usuario ahora y cómo se comporta la flota. TaxiGraph tiene dos tareas distintas sobre ese mismo mapa, conducir y editar. El control de modo necesita mostrar cuál está activa y el texto contextual debe indicar el siguiente clic, en especial cuando ya hay un origen elegido para crear o editar una calle.
+La interfaz debe responder en unos segundos a tres preguntas de una demostración: qué está ocurriendo en la ciudad, qué puede hacer el usuario ahora y cómo se comporta la flota. OnDrive tiene dos tareas distintas sobre ese mismo mapa, conducir y editar. El control de modo necesita mostrar cuál está activa y el texto contextual debe indicar el siguiente clic, en especial cuando ya hay un origen elegido para crear o editar una calle.
 
 ## Composición propuesta
 

@@ -10,7 +10,8 @@
 int main(int argc, char *argv[])
 {
     QApplication app(argc, argv);
-    app.setApplicationName(QStringLiteral("TaxiGraph"));
+    app.setApplicationName(QStringLiteral("OnDrive"));
+    app.setApplicationDisplayName(QStringLiteral("OnDrive"));
     app.setStyle(QStringLiteral("Fusion"));
     app.setFont(QFont(QStringLiteral("Segoe UI"), 10));
 
