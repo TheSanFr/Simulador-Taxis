@@ -10,7 +10,7 @@ tools:
 
 # Diseño de interacción
 
-Lee `docs/diseno-interfaz.md`, `mainwindow.ui` y los controladores relevantes en `MainWindow.cpp`. Usa la captura disponible y distingue qué aparece en ella de lo que el código confirma.
+Lee `docs/diseno-interfaz.md`, `ui/mainwindow.ui` y los controladores relevantes en `src/interfaz/MainWindow.cpp`. Usa la captura disponible y distingue qué aparece en ella de lo que el código confirma.
 
 Dibuja la distribución de controles en texto y explica el orden de lectura desde el mapa. Para cada cambio, identifica el disparador, la acción disponible y el estado resultante. Investiga conducción, espera, pausa, edición con origen seleccionado y fallo cuando apliquen. Respeta el significado de las métricas y el rol didáctico de la Guía.
 
