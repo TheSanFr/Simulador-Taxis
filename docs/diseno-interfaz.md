@@ -32,10 +32,10 @@ La interfaz debe responder en unos segundos a tres preguntas de una demostració
 
 ## Puntos de entrada confirmados
 
-- `mainwindow.ui` define los layouts, controles y splitter. `MainWindow.cpp` conecta los eventos y presenta estado, tablas y ayuda.
-- `interfaz.qss` es la hoja de estilos cargada por `main.cpp` desde los recursos registrados en CMake.
-- `MapaWidget.cpp` dibuja calles, rutas, pesos, nodos, pasajeros, taxis y efectos nocturnos. También gestiona coordenadas y eventos del ratón.
-- `Simulacion.cpp`, `Grafo.cpp`, `RelojSimulacion.cpp` y las clases de taxi definen reglas de negocio. Comprueba sus contratos si cambia su representación.
+- `ui/mainwindow.ui` define los layouts, controles y splitter. `src/interfaz/MainWindow.cpp` conecta los eventos y presenta estado, tablas y ayuda.
+- `recursos/interfaz.qss` es la hoja de estilos cargada por `src/main.cpp` desde los recursos registrados en CMake.
+- `src/interfaz/MapaWidget.cpp` dibuja calles, rutas, pesos, nodos, pasajeros, taxis y efectos nocturnos. También gestiona coordenadas y eventos del ratón.
+- `src/simulacion/Simulacion.cpp`, `src/simulacion/Grafo.cpp`, `src/simulacion/RelojSimulacion.cpp` y las clases de taxi definen reglas de negocio. Comprueba sus contratos si cambia su representación.
 
 ## Aceptación de la primera entrega
 
