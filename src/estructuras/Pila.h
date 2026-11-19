@@ -10,10 +10,6 @@ private:
 
 public:
     Pila();
-
-    Pila(const Pila &) = delete;
-    Pila &operator=(const Pila &) = delete;
-
     ~Pila();
 
     void apilar(int dato);

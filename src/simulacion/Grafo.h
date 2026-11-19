@@ -1,7 +1,6 @@
 #ifndef GRAFO_H
 #define GRAFO_H
 
-#include <QObject>
 #include <QPair>
 #include <QPointF>
 #include <QString>
@@ -14,43 +13,84 @@ class ListaAristas;
 class ListaNodos;
 class Nodo;
 
-class Grafo : public QObject
-{
-    Q_OBJECT
+double calcularTarifa(int saltos, double tiempoPonderado, QString tipoDestino, QString periodo);
+double calcularTaximetro(int saltos, double tiempoPonderado);
+double calcularRecargos(QString tipoDestino, QString periodo);
+QString formatearPesos(double valor);
 
+class RevisionCalle
+{
 private:
-    static const int limiteNodos = 100;
+    bool valida;
+    QString motivo;
+    QVector<QPointF> cruces;
+    double peso;
+    QVector<QPair<int, int>> tramosAfectados;
+
+public:
+    RevisionCalle();
+
+    bool esValida() const;
+    void setValida(bool valor);
+
+    QString getMotivo() const;
+    void setMotivo(QString texto);
+
+    const QVector<QPointF> &getCruces() const;
+    void agregarCruce(QPointF punto);
+
+    double getPeso() const;
+    void setPeso(double valor);
+
+    const QVector<QPair<int, int>> &getTramosAfectados() const;
+    void setTramosAfectados(const QVector<QPair<int, int>> &tramos);
+};
+
+class RevisionNodo
+{
+private:
+    bool valida;
+    QString motivo;
+    QPointF posicion;
+    bool divideCalle;
+    QVector<QPair<int, int>> tramosAfectados;
+
+public:
+    RevisionNodo();
+
+    bool esValida() const;
+    void setValida(bool valor);
+
+    QString getMotivo() const;
+    void setMotivo(QString texto);
+
+    QPointF getPosicion() const;
+    void setPosicion(QPointF punto);
+
+    bool getDivideCalle() const;
+    void setDivideCalle(bool valor);
+
+    const QVector<QPair<int, int>> &getTramosAfectados() const;
+    void setTramosAfectados(const QVector<QPair<int, int>> &tramos);
+};
+
+class Grafo
+{
+private:
     ListaNodos *nodos;
     ListaAristas *aristas;
     double multiplicadorHoraPico;
-    quint64 identidadesNodos[limiteNodos] = {};
-    quint64 siguienteIdentidadNodo = 1;
-    quint64 revisionPesos = 0;
+    int identidadesNodos[100];
+    int siguienteIdentidadNodo;
+    int revisionPesos;
+    int revisionGrafo;
 
+    void registrarModificacionEstructura();
     ResultadoRuta reconstruirRuta(int anterior[], int origen, int destino, int explorados) const;
 
 public:
-    struct RevisionCalle
-    {
-        bool valida = false;
-        QString motivo;
-        QVector<QPointF> cruces;
-        double peso = 0.0;
-        QVector<QPair<int, int>> tramosAfectados;
-    };
-
-    struct RevisionNodo
-    {
-        bool valida = false;
-        QString motivo;
-        QPointF posicion;
-        bool divideCalle = false;
-        QVector<QPair<int, int>> tramosAfectados;
-    };
-
-    explicit Grafo(QObject *parent = nullptr);
-
-    ~Grafo() override;
+    Grafo();
+    ~Grafo();
 
     ListaNodos *getNodos() const;
     ListaAristas *getAristas() const;
@@ -58,8 +98,9 @@ public:
     Nodo *buscarNodo(int id) const;
 
     bool tieneNodo(int id) const;
-    quint64 getIdentidadNodo(int id) const;
-    quint64 getRevisionPesos() const;
+    int getIdentidadNodo(int id) const;
+    int getRevisionPesos() const;
+    int getRevisionGrafo() const;
 
     int obtenerSiguienteIdDisponible() const;
 
@@ -92,7 +133,6 @@ public:
 
     bool existeAristaDirigida(int origen, int destino) const;
 
-
     double obtenerPesoEfectivo(int origen, int destino) const;
 
     double obtenerPesoEfectivoArista(Arista *a) const;
@@ -100,6 +140,7 @@ public:
     double obtenerNivelCongestion(Arista *a) const;
 
     void registrarUso(int origen, int destino);
+    void disiparCongestion(double dt);
 
     int nodoMasCercano(QPointF punto, double distanciaMaxima = -1.0) const;
 
@@ -112,13 +153,6 @@ public:
     ResultadoRuta buscarRutaDFS(int origen, int destino) const;
 
     ResultadoRuta buscarRutaDijkstra(int origen, int destino) const;
-
-    static double calcularTarifa(int saltos, double tiempoPonderado, QString tipoDestino, QString periodo);
-
-    static QString formatearPesos(double valor);
-
-signals:
-    void grafoModificado();
 };
 
 #endif

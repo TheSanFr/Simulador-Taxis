@@ -16,15 +16,15 @@
 #include "simulacion/RelojSimulacion.h"
 
 class Grafo;
+class MainWindow;
 class Taxi;
 class TaxiManual;
 
 class Simulacion : public QObject
 {
-    Q_OBJECT
-
 private:
     Grafo *grafo;
+    MainWindow *ventana;
     RelojSimulacion reloj;
     QRectF limitesMapa;
     QPolygonF agua;
@@ -75,13 +75,14 @@ private:
     void registrarEvento(QString categoria, QString titulo, QString detalle,
                          int idTaxi = -1, int idNodo = -1);
 
-private slots:
     void enTickReloj();
 
 public:
     explicit Simulacion(QObject *parent = nullptr);
 
     ~Simulacion() override;
+
+    void setVentanaPrincipal(MainWindow *nuevaVentana);
 
     Grafo *getGrafo() const;
     const RelojSimulacion &getReloj() const;
@@ -106,16 +107,6 @@ public:
     void reiniciar();
 
     double cotizarCarrera(int origen, int destino) const;
-
-signals:
-    void cuadroActualizado(double dtReal);
-    void muestraGrafico(double segundosSimulados);
-    void reinicioCompletado();
-    void pausaCambiada(bool pausada);
-    void eventoOcurrido(QString hora, QString categoria, QString titulo, QString detalle,
-                        int idTaxi, int idNodo);
-    void pasajeroRecogido(int idTaxi, int origen, int destino);
-    void carreraCompletada(int idTaxi, QPointF posMapa, double tarifa, QColor color);
 };
 
 #endif

@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.21)
+﻿cmake_minimum_required(VERSION 3.21)
 
 project(TaxiGraph VERSION 1.0 LANGUAGES CXX)
 
@@ -40,7 +40,6 @@ qt_add_executable(TaxiGraph
     src/interfaz/MapaWidget.h
     src/interfaz/TextoFlotante.cpp
     src/interfaz/TextoFlotante.h
-    src/interfaz/TransicionesPanel.h
     src/main.cpp
     src/modelo/Arista.cpp
     src/modelo/Arista.h

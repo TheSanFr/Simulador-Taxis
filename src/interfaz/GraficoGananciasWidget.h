@@ -2,7 +2,6 @@
 #define GRAFICO_GANANCIAS_WIDGET_H
 
 #include <QWidget>
-#include <QPointer>
 
 class QChart;
 class QChartView;
@@ -12,10 +11,8 @@ class Simulacion;
 
 class GraficoGananciasWidget : public QWidget
 {
-    Q_OBJECT
-
 private:
-    QPointer<Simulacion> sim;
+    Simulacion *sim;
     QChart *grafico;
     QChartView *vista;
     QValueAxis *ejeX;
@@ -23,15 +20,12 @@ private:
     QLineSeries *series[7];
     int cantidadSeries;
 
-private slots:
-    void reconstruirSeries();
-
-    void enMuestra(double segundos);
-
 public:
     explicit GraficoGananciasWidget(QWidget *parent = nullptr);
 
     void setSimulacion(Simulacion *nuevaSim);
+    void reconstruirSeries();
+    void enMuestra(double segundos);
 };
 
 #endif

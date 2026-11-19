@@ -15,7 +15,8 @@ QWidget#manualSummary {
 }
 QWidget#sidePanel {
     background: #20262a;
-    border-radius: 6px;
+    border: 1px solid #2e373d;
+    border-radius: 8px;
 }
 QLabel#lblProduct, QLabel#lblManualState, QLabel#lblDialogTitle {
     color: #f4f7fa;
@@ -27,10 +28,8 @@ QLabel#lblProduct {
     font-weight: 700;
 }
 QLabel#lblDialogTitle {
-    font-weight: 700;
-}
-QLabel#lblDialogTitle {
     font-size: 18px;
+    font-weight: 700;
 }
 QLabel#lblManualState {
     font-size: 23px;
@@ -63,14 +62,15 @@ QLabel#lblEditHint {
     font-size: 12px;
 }
 QPushButton, QComboBox, QLineEdit {
-    background: #272e31;
-    border: 1px solid #424b4d;
-    border-radius: 4px;
+    background: #272f33;
+    border: 1px solid #455053;
+    border-bottom: 2px solid #13181a;
+    border-radius: 6px;
     min-height: 19px;
-    padding: 6px 10px;
+    padding: 6px 10px 5px 10px;
 }
 QPushButton {
-    border-radius: 5px;
+    border-radius: 6px;
     font-family: "Bahnschrift", "Segoe UI";
     font-size: 13px;
     font-weight: 600;
@@ -78,59 +78,80 @@ QPushButton {
     padding-right: 15px;
 }
 QPushButton:hover, QComboBox:hover, QLineEdit:hover {
-    background: #343e40;
-    border-color: #657474;
+    background: #354044;
+    border-color: #6b7b7c;
+    border-bottom-color: #181f22;
 }
 QPushButton:focus, QComboBox:focus, QLineEdit:focus {
     border-color: #a9c7e2;
 }
 QPushButton:pressed {
-    background: #17222e;
+    background: #1a242e;
+    border-top: 2px solid #13181a;
+    border-bottom: 1px solid #354044;
+    padding-top: 7px;
+    padding-bottom: 4px;
 }
 QPushButton#btnPause {
     min-width: 82px;
 }
 QPushButton#btnDriveMode, QPushButton#btnEditMode {
-    background: transparent;
-    padding-left: 9px;
-    padding-right: 9px;
+    background: #232a2e;
+    border: 1px solid #3c4649;
+    border-bottom: 2px solid #121719;
+    padding-left: 12px;
+    padding-right: 12px;
+}
+QPushButton#btnDriveMode:hover, QPushButton#btnEditMode:hover {
+    background: #313b3f;
+    border-color: #657474;
 }
 QPushButton#btnDriveMode:checked, QPushButton#btnEditMode:checked {
-    background: #36352c;
-    border-color: #85734c;
+    background: #38362b;
+    border-color: #937f52;
+    border-bottom: 2px solid #1f1c13;
     color: #ffe5a7;
 }
 QPushButton#btnReset {
-    background: transparent;
-    color: #bdc6c5;
+    background: #242b2f;
+    border: 1px solid #3d474a;
+    border-bottom: 2px solid #121719;
+    color: #cfd8d7;
 }
 QPushButton#btnReset:hover {
-    background: #343e40;
+    background: #343e42;
+    border-color: #687879;
 }
 QPushButton#btnConstruirCalle:enabled {
-    background: #36352c;
-    border-color: #85734c;
+    background: #38362b;
+    border-color: #937f52;
+    border-bottom: 2px solid #1f1c13;
     color: #ffe5a7;
 }
 QPushButton#btnPause, QDialogButtonBox QPushButton:default {
     background: #ffd166;
-    border-color: #ffd166;
+    border: 1px solid #ffe08d;
+    border-bottom: 2px solid #b58c28;
     color: #222016;
 }
 QPushButton#btnPause:hover, QDialogButtonBox QPushButton:default:hover {
     background: #ffdf93;
+    border-color: #fff0c2;
+    border-bottom-color: #c49a33;
 }
 QPushButton#btnPause:focus, QDialogButtonBox QPushButton:default:focus {
     border-color: #ffffff;
 }
 QPushButton#btnPause:checked {
     background: #2c3b47;
-    border-color: #ffd166;
+    border: 1px solid #ffd166;
+    border-bottom: 2px solid #172027;
     color: #ffe6a6;
 }
 QPushButton:disabled {
     background: #192530;
-    border-color: #2b3a49;
+    border: 1px solid #2b3a49;
+    border-bottom: 2px solid #121a22;
     color: #81909f;
 }
 QCheckBox {
@@ -138,7 +159,7 @@ QCheckBox {
     color: #c5d2de;
 }
 QComboBox {
-    border-radius: 5px;
+    border-radius: 6px;
     padding-left: 12px;
     padding-right: 32px;
 }
@@ -214,7 +235,7 @@ QHeaderView::section {
 QTextEdit, QTextBrowser {
     background: #1b2124;
     border: 1px solid #374042;
-    border-radius: 5px;
+    border-radius: 6px;
     color: #d9e4ee;
     padding: 8px;
 }

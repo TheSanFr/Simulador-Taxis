@@ -142,7 +142,7 @@ void BarrasGananciasWidget::paintEvent(QPaintEvent *)
 
         p.setPen(destacado ? QColor("#ffd166") : QColor("#d7e2ec"));
         p.drawText(QRectF(width() - margen - anchoValor, cy - 11, anchoValor, 22),
-                   Qt::AlignVCenter | Qt::AlignRight, Grafo::formatearPesos(ingresos));
+                   Qt::AlignVCenter | Qt::AlignRight, formatearPesos(ingresos));
     }
 }
 
@@ -162,20 +162,12 @@ void BarrasGananciasWidget::setSimulacion(Simulacion *nuevaSim)
 {
     if (sim == nuevaSim)
         return;
-    if (sim != nullptr)
-        disconnect(sim, nullptr, this, nullptr);
 
     sim = nuevaSim;
     reiniciarBarras();
     if (sim == nullptr)
         return;
 
-    connect(sim, &Simulacion::cuadroActualizado, this, &BarrasGananciasWidget::enCuadro);
-    connect(sim, &Simulacion::reinicioCompletado, this, &BarrasGananciasWidget::reiniciarBarras);
-    connect(sim, &QObject::destroyed, this, [this] {
-        sim = nullptr;
-        reiniciarBarras();
-    });
     if (isVisible())
     {
         escala = 50000.0;

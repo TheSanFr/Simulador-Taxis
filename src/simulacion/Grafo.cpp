@@ -12,83 +12,364 @@
 #include <QLineF>
 #include <QLocale>
 #include <QSet>
-#include <QSignalBlocker>
 #include <QtMath>
-#include <algorithm>
 #include <cmath>
-#include <limits>
 
-namespace
-{
+const int limiteMaximoNodos = 100;
 const double distanciaMinimaCruces = 26.0;
 const double toleranciaCruce = 0.75;
+const double coordenadaMaximaMapa = 1000000.0;
 
-struct Tramo
+RevisionCalle::RevisionCalle()
+    : valida(false), peso(0.0)
 {
+}
+
+bool RevisionCalle::esValida() const
+{
+    return valida;
+}
+
+void RevisionCalle::setValida(bool valor)
+{
+    valida = valor;
+}
+
+QString RevisionCalle::getMotivo() const
+{
+    return motivo;
+}
+
+void RevisionCalle::setMotivo(QString texto)
+{
+    motivo = texto;
+}
+
+const QVector<QPointF> &RevisionCalle::getCruces() const
+{
+    return cruces;
+}
+
+void RevisionCalle::agregarCruce(QPointF punto)
+{
+    cruces.append(punto);
+}
+
+double RevisionCalle::getPeso() const
+{
+    return peso;
+}
+
+void RevisionCalle::setPeso(double valor)
+{
+    peso = valor;
+}
+
+const QVector<QPair<int, int>> &RevisionCalle::getTramosAfectados() const
+{
+    return tramosAfectados;
+}
+
+void RevisionCalle::setTramosAfectados(const QVector<QPair<int, int>> &tramos)
+{
+    tramosAfectados = tramos;
+}
+
+RevisionNodo::RevisionNodo()
+    : valida(false), divideCalle(false)
+{
+}
+
+bool RevisionNodo::esValida() const
+{
+    return valida;
+}
+
+void RevisionNodo::setValida(bool valor)
+{
+    valida = valor;
+}
+
+QString RevisionNodo::getMotivo() const
+{
+    return motivo;
+}
+
+void RevisionNodo::setMotivo(QString texto)
+{
+    motivo = texto;
+}
+
+QPointF RevisionNodo::getPosicion() const
+{
+    return posicion;
+}
+
+void RevisionNodo::setPosicion(QPointF punto)
+{
+    posicion = punto;
+}
+
+bool RevisionNodo::getDivideCalle() const
+{
+    return divideCalle;
+}
+
+void RevisionNodo::setDivideCalle(bool valor)
+{
+    divideCalle = valor;
+}
+
+const QVector<QPair<int, int>> &RevisionNodo::getTramosAfectados() const
+{
+    return tramosAfectados;
+}
+
+void RevisionNodo::setTramosAfectados(const QVector<QPair<int, int>> &tramos)
+{
+    tramosAfectados = tramos;
+}
+
+class TramoEdicion
+{
+private:
     QPair<int, int> nodos;
     QLineF linea;
+
+public:
+    TramoEdicion()
+    {
+    }
+
+    TramoEdicion(QPair<int, int> nodos, QLineF linea)
+        : nodos(nodos), linea(linea)
+    {
+    }
+
+    QPair<int, int> getNodos() const
+    {
+        return nodos;
+    }
+
+    QLineF getLinea() const
+    {
+        return linea;
+    }
 };
 
-struct Cruce
+class CruceEdicion
 {
+private:
     QPointF posicion;
     int nodo;
     double fraccion;
+
+public:
+    CruceEdicion()
+        : nodo(-1), fraccion(0.0)
+    {
+    }
+
+    CruceEdicion(QPointF posicion, int nodo, double fraccion)
+        : posicion(posicion), nodo(nodo), fraccion(fraccion)
+    {
+    }
+
+    QPointF getPosicion() const
+    {
+        return posicion;
+    }
+
+    int getNodo() const
+    {
+        return nodo;
+    }
+
+    void setNodo(int idNodo)
+    {
+        nodo = idNodo;
+    }
+
+    double getFraccion() const
+    {
+        return fraccion;
+    }
 };
 
-struct Division
+class DivisionEdicion
 {
+private:
     QPair<int, int> nodos;
     int indiceCruce;
     double fraccion;
+
+public:
+    DivisionEdicion()
+        : indiceCruce(0), fraccion(0.0)
+    {
+    }
+
+    DivisionEdicion(QPair<int, int> nodos, int indiceCruce, double fraccion)
+        : nodos(nodos), indiceCruce(indiceCruce), fraccion(fraccion)
+    {
+    }
+
+    QPair<int, int> getNodos() const
+    {
+        return nodos;
+    }
+
+    int getIndiceCruce() const
+    {
+        return indiceCruce;
+    }
+
+    double getFraccion() const
+    {
+        return fraccion;
+    }
 };
 
-struct PlanEdicion
+class PlanEdicion
 {
+private:
     QString motivo;
-    double peso = 0.0;
-    QVector<Cruce> cruces;
-    QVector<Division> divisiones;
+    double peso;
+    QVector<CruceEdicion> cruces;
+    QVector<DivisionEdicion> divisiones;
     QVector<int> recorrido;
+
+public:
+    PlanEdicion()
+        : peso(0.0)
+    {
+    }
+
+    QString getMotivo() const
+    {
+        return motivo;
+    }
+
+    void setMotivo(QString texto)
+    {
+        motivo = texto;
+    }
+
+    double getPeso() const
+    {
+        return peso;
+    }
+
+    void setPeso(double valor)
+    {
+        peso = valor;
+    }
+
+    QVector<CruceEdicion> &getCruces()
+    {
+        return cruces;
+    }
+
+    const QVector<CruceEdicion> &getCruces() const
+    {
+        return cruces;
+    }
+
+    QVector<DivisionEdicion> &getDivisiones()
+    {
+        return divisiones;
+    }
+
+    const QVector<DivisionEdicion> &getDivisiones() const
+    {
+        return divisiones;
+    }
+
+    QVector<int> &getRecorrido()
+    {
+        return recorrido;
+    }
+
+    const QVector<int> &getRecorrido() const
+    {
+        return recorrido;
+    }
 };
 
-struct AristaPlaneada
+class AristaPlaneada
 {
+private:
     int origen;
     int destino;
     double pesoInicial;
     double peso;
     bool esAvenida;
+
+public:
+    AristaPlaneada()
+        : origen(-1), destino(-1), pesoInicial(0.0), peso(0.0), esAvenida(false)
+    {
+    }
+
+    AristaPlaneada(int origen, int destino, double pesoInicial, double peso, bool esAvenida)
+        : origen(origen), destino(destino), pesoInicial(pesoInicial), peso(peso), esAvenida(esAvenida)
+    {
+    }
+
+    int getOrigen() const
+    {
+        return origen;
+    }
+
+    int getDestino() const
+    {
+        return destino;
+    }
+
+    double getPesoInicial() const
+    {
+        return pesoInicial;
+    }
+
+    double getPeso() const
+    {
+        return peso;
+    }
+
+    bool getEsAvenida() const
+    {
+        return esAvenida;
+    }
 };
 
-double proyectar(const QLineF &linea, QPointF punto)
+double proyectarPuntoEnLinea(const QLineF &linea, QPointF punto)
 {
     const QPointF vector = linea.p2() - linea.p1();
     return QPointF::dotProduct(punto - linea.p1(), vector) / QPointF::dotProduct(vector, vector);
 }
 
-QPointF coordenadaNodo(QPointF punto)
+QPointF redondearCoordenadaNodo(QPointF punto)
 {
     return QPointF(qRound(punto.x()), qRound(punto.y()));
 }
 
-bool esInterior(const QLineF &linea, double fraccion)
+bool esFraccionInterior(const QLineF &linea, double fraccion)
 {
     const double margen = toleranciaCruce / linea.length();
     return fraccion > margen && fraccion < 1.0 - margen;
 }
 
-QVector<Tramo> callesExistentes(const Grafo &grafo)
+QVector<TramoEdicion> obtenerCallesExistentes(const Grafo &grafo)
 {
-    QVector<Tramo> calles;
+    QVector<TramoEdicion> calles;
     QSet<QPair<int, int>> vistos;
     for (const ElementoArista *e = grafo.getAristas()->getPrimero(); e != nullptr; e = e->getSiguiente())
     {
         const Arista *arista = e->getArista();
         if (arista == nullptr)
             continue;
-        const int a = std::min(arista->getOrigen(), arista->getDestino());
-        const int b = std::max(arista->getOrigen(), arista->getDestino());
+        const int a = qMin(arista->getOrigen(), arista->getDestino());
+        const int b = qMax(arista->getOrigen(), arista->getDestino());
         const QPair<int, int> ids(a, b);
         if (vistos.contains(ids))
             continue;
@@ -99,69 +380,71 @@ QVector<Tramo> callesExistentes(const Grafo &grafo)
         {
             const QLineF linea(nodoA->getPosicion(), nodoB->getPosicion());
             if (linea.length() > toleranciaCruce)
-                calles.append({ids, linea});
+                calles.append(TramoEdicion(ids, linea));
         }
     }
     return calles;
 }
 
-bool solapaTramo(const QLineF &propuesta, const QLineF &existente)
+bool solapaTramoExistente(const QLineF &propuesta, const QLineF &existente)
 {
-    const double a = proyectar(propuesta, existente.p1());
-    const double b = proyectar(propuesta, existente.p2());
+    const double a = proyectarPuntoEnLinea(propuesta, existente.p1());
+    const double b = proyectarPuntoEnLinea(propuesta, existente.p2());
     if (QLineF(propuesta.pointAt(a), existente.p1()).length() > toleranciaCruce
         || QLineF(propuesta.pointAt(b), existente.p2()).length() > toleranciaCruce)
         return false;
-    return (std::min(1.0, std::max(a, b)) - std::max(0.0, std::min(a, b))) * propuesta.length()
+    return (qMin(1.0, qMax(a, b)) - qMax(0.0, qMin(a, b))) * propuesta.length()
         > toleranciaCruce;
 }
 
-int registrarCruce(PlanEdicion &plan, QPointF posicion, int nodo, double fraccion)
+int registrarCruceEnPlan(PlanEdicion &plan, QPointF posicion, int nodo, double fraccion)
 {
-    for (int i = 0; i < plan.cruces.size(); ++i)
+    QVector<CruceEdicion> &cruces = plan.getCruces();
+    for (int i = 0; i < cruces.size(); ++i)
     {
-        if (plan.cruces[i].posicion == posicion)
+        if (cruces[i].getPosicion() == posicion)
         {
             if (nodo >= 0)
-                plan.cruces[i].nodo = nodo;
+                cruces[i].setNodo(nodo);
             return i;
         }
     }
-    plan.cruces.append({posicion, nodo, fraccion});
-    return plan.cruces.size() - 1;
+    cruces.append(CruceEdicion(posicion, nodo, fraccion));
+    return cruces.size() - 1;
 }
 
-void comprobarCapacidad(const Grafo &grafo, PlanEdicion &plan)
+void comprobarCapacidadGrafo(const Grafo &grafo, PlanEdicion &plan)
 {
     int nuevos = 0;
-    for (const Cruce &cruce : plan.cruces)
+    const QVector<CruceEdicion> &cruces = plan.getCruces();
+    for (int i = 0; i < cruces.size(); ++i)
     {
-        if (cruce.nodo < 0)
+        if (cruces[i].getNodo() < 0)
             ++nuevos;
     }
-    if (nuevos > 100 - grafo.getNodos()->getCantidad())
-        plan.motivo = QStringLiteral("El mapa admite hasta 100 nodos. Libera espacio para crear el cruce.");
+    if (nuevos > limiteMaximoNodos - grafo.getNodos()->getCantidad())
+        plan.setMotivo(QStringLiteral("El mapa admite hasta 100 nodos. Libera espacio para crear el cruce."));
 }
 
-PlanEdicion prepararCalle(const Grafo &grafo, int origen, int destino)
+PlanEdicion prepararPlanCalle(const Grafo &grafo, int origen, int destino)
 {
     PlanEdicion plan;
     const Nodo *a = grafo.buscarNodo(origen);
     const Nodo *b = grafo.buscarNodo(destino);
     if (a == nullptr || b == nullptr || origen == destino)
     {
-        plan.motivo = QStringLiteral("Selecciona dos nodos diferentes.");
+        plan.setMotivo(QStringLiteral("Selecciona dos nodos diferentes."));
         return plan;
     }
     const QLineF propuesta(a->getPosicion(), b->getPosicion());
     if (propuesta.length() < distanciaMinimaCruces)
     {
-        plan.motivo = QStringLiteral("Los nodos están demasiado cerca para dibujar una calle.");
+        plan.setMotivo(QStringLiteral("Los nodos están demasiado cerca para dibujar una calle."));
         return plan;
     }
-    plan.peso = grafo.sugerirPeso(origen, destino, false);
-    registrarCruce(plan, propuesta.p1(), origen, 0.0);
-    registrarCruce(plan, propuesta.p2(), destino, 1.0);
+    plan.setPeso(grafo.sugerirPeso(origen, destino, false));
+    registrarCruceEnPlan(plan, propuesta.p1(), origen, 0.0);
+    registrarCruceEnPlan(plan, propuesta.p2(), destino, 1.0);
 
     for (const ElementoNodo *e = grafo.getNodos()->getPrimero(); e != nullptr; e = e->getSiguiente())
     {
@@ -169,86 +452,92 @@ PlanEdicion prepararCalle(const Grafo &grafo, int origen, int destino)
         if (nodo == nullptr || nodo->getId() == origen || nodo->getId() == destino)
             continue;
         const QPointF posicion = nodo->getPosicion();
-        const double fraccion = proyectar(propuesta, posicion);
-        if (esInterior(propuesta, fraccion)
+        const double fraccion = proyectarPuntoEnLinea(propuesta, posicion);
+        if (esFraccionInterior(propuesta, fraccion)
             && QLineF(posicion, propuesta.pointAt(fraccion)).length() <= toleranciaCruce)
-            registrarCruce(plan, posicion, nodo->getId(), fraccion);
+            registrarCruceEnPlan(plan, posicion, nodo->getId(), fraccion);
     }
 
-    for (const Tramo &tramo : callesExistentes(grafo))
+    const QVector<TramoEdicion> existentes = obtenerCallesExistentes(grafo);
+    for (int i = 0; i < existentes.size(); ++i)
     {
-        if (solapaTramo(propuesta, tramo.linea))
+        const TramoEdicion &tramo = existentes[i];
+        const QLineF lineaTramo = tramo.getLinea();
+        if (solapaTramoExistente(propuesta, lineaTramo))
         {
-            plan.motivo = QStringLiteral("La propuesta se superpone a una calle existente.");
+            plan.setMotivo(QStringLiteral("La propuesta se superpone a una calle existente."));
             return plan;
         }
         QPointF interseccion;
-        if (propuesta.intersects(tramo.linea, &interseccion) != QLineF::BoundedIntersection)
+        if (propuesta.intersects(lineaTramo, &interseccion) != QLineF::BoundedIntersection)
             continue;
-        const double avance = std::clamp(proyectar(propuesta, interseccion), 0.0, 1.0);
-        const double avanceTramo = std::clamp(proyectar(tramo.linea, interseccion), 0.0, 1.0);
-        if (!esInterior(tramo.linea, avanceTramo))
+        const double avance = qBound(0.0, proyectarPuntoEnLinea(propuesta, interseccion), 1.0);
+        const double avanceTramo = qBound(0.0, proyectarPuntoEnLinea(lineaTramo, interseccion), 1.0);
+        if (!esFraccionInterior(lineaTramo, avanceTramo))
             continue;
 
         const int idExistente = grafo.nodoMasCercano(interseccion, toleranciaCruce);
         const Nodo *existente = grafo.buscarNodo(idExistente);
-        QPointF punto = existente != nullptr ? existente->getPosicion() : coordenadaNodo(interseccion);
+        QPointF punto = existente != nullptr ? existente->getPosicion() : redondearCoordenadaNodo(interseccion);
         if (existente == nullptr && grafo.nodoMasCercano(punto, distanciaMinimaCruces) >= 0)
         {
-            plan.motivo = QStringLiteral("El cruce quedaría demasiado cerca de un nodo existente. Conecta ese nodo.");
+            plan.setMotivo(QStringLiteral("El cruce quedaría demasiado cerca de un nodo existente. Conecta ese nodo."));
             return plan;
         }
-        const int indice = registrarCruce(plan, punto, idExistente, avance);
-        plan.divisiones.append({tramo.nodos, indice, avanceTramo});
+        const int indice = registrarCruceEnPlan(plan, punto, idExistente, avance);
+        plan.getDivisiones().append(DivisionEdicion(tramo.getNodos(), indice, avanceTramo));
     }
 
-    for (int i = 0; i < plan.cruces.size(); ++i)
-        plan.recorrido.append(i);
-    for (int i = 1; i < plan.recorrido.size(); ++i)
+    QVector<int> &recorrido = plan.getRecorrido();
+    const QVector<CruceEdicion> &cruces = plan.getCruces();
+    for (int i = 0; i < cruces.size(); ++i)
+        recorrido.append(i);
+    for (int i = 1; i < recorrido.size(); ++i)
     {
-        const int indice = plan.recorrido[i];
+        const int indice = recorrido[i];
         int posicion = i;
         while (posicion > 0
-               && plan.cruces[plan.recorrido[posicion - 1]].fraccion > plan.cruces[indice].fraccion)
+               && cruces[recorrido[posicion - 1]].getFraccion() > cruces[indice].getFraccion())
         {
-            plan.recorrido[posicion] = plan.recorrido[posicion - 1];
+            recorrido[posicion] = recorrido[posicion - 1];
             --posicion;
         }
-        plan.recorrido[posicion] = indice;
+        recorrido[posicion] = indice;
     }
-    for (int i = 1; i < plan.recorrido.size(); ++i)
+    for (int i = 1; i < recorrido.size(); ++i)
     {
-        const Cruce &anterior = plan.cruces[plan.recorrido[i - 1]];
-        const Cruce &actual = plan.cruces[plan.recorrido[i]];
-        if (QLineF(anterior.posicion, actual.posicion).length() < distanciaMinimaCruces)
+        const CruceEdicion &anterior = cruces[recorrido[i - 1]];
+        const CruceEdicion &actual = cruces[recorrido[i]];
+        if (QLineF(anterior.getPosicion(), actual.getPosicion()).length() < distanciaMinimaCruces)
         {
-            plan.motivo = QStringLiteral("Hay dos cruces demasiado juntos para construir esta calle.");
+            plan.setMotivo(QStringLiteral("Hay dos cruces demasiado juntos para construir esta calle."));
             return plan;
         }
     }
-    comprobarCapacidad(grafo, plan);
+    comprobarCapacidadGrafo(grafo, plan);
     return plan;
 }
 
-PlanEdicion prepararNodo(const Grafo &grafo, QPointF posicion, double radioCalle)
+PlanEdicion prepararPlanNodo(const Grafo &grafo, QPointF posicion, double radioCalle)
 {
     PlanEdicion plan;
-    const double maximo = std::numeric_limits<int>::max() - 1.0;
     if (!std::isfinite(posicion.x()) || !std::isfinite(posicion.y())
-        || std::abs(posicion.x()) > maximo || std::abs(posicion.y()) > maximo
+        || std::abs(posicion.x()) > coordenadaMaximaMapa || std::abs(posicion.y()) > coordenadaMaximaMapa
         || !std::isfinite(radioCalle) || radioCalle < 0)
     {
-        plan.motivo = QStringLiteral("Selecciona una posición válida del mapa.");
+        plan.setMotivo(QStringLiteral("Selecciona una posición válida del mapa."));
         return plan;
     }
     QPointF punto = posicion;
     double menorDistancia = radioCalle;
-    for (const Tramo &tramo : callesExistentes(grafo))
+    const QVector<TramoEdicion> existentes = obtenerCallesExistentes(grafo);
+    for (int i = 0; i < existentes.size(); ++i)
     {
-        const double avance = proyectar(tramo.linea, posicion);
-        if (!esInterior(tramo.linea, avance))
+        const QLineF lineaTramo = existentes[i].getLinea();
+        const double avance = proyectarPuntoEnLinea(lineaTramo, posicion);
+        if (!esFraccionInterior(lineaTramo, avance))
             continue;
-        const QPointF proyeccion = tramo.linea.pointAt(avance);
+        const QPointF proyeccion = lineaTramo.pointAt(avance);
         const double distancia = QLineF(proyeccion, posicion).length();
         if (distancia <= menorDistancia)
         {
@@ -256,93 +545,112 @@ PlanEdicion prepararNodo(const Grafo &grafo, QPointF posicion, double radioCalle
             menorDistancia = distancia;
         }
     }
-    registrarCruce(plan, coordenadaNodo(punto), -1, 0.0);
-    if (grafo.nodoMasCercano(plan.cruces.first().posicion, distanciaMinimaCruces) >= 0)
+    registrarCruceEnPlan(plan, redondearCoordenadaNodo(punto), -1, 0.0);
+    if (grafo.nodoMasCercano(plan.getCruces().first().getPosicion(), distanciaMinimaCruces) >= 0)
     {
-        plan.motivo = QStringLiteral("Ya hay un nodo cerca. Usa ese cruce o elige otro punto.");
+        plan.setMotivo(QStringLiteral("Ya hay un nodo cerca. Usa ese cruce o elige otro punto."));
         return plan;
     }
-    for (const Tramo &tramo : callesExistentes(grafo))
+    for (int i = 0; i < existentes.size(); ++i)
     {
-        const double avance = proyectar(tramo.linea, punto);
-        if (esInterior(tramo.linea, avance)
-            && QLineF(tramo.linea.pointAt(avance), punto).length() <= toleranciaCruce)
-            plan.divisiones.append({tramo.nodos, 0, avance});
+        const TramoEdicion &tramo = existentes[i];
+        const QLineF lineaTramo = tramo.getLinea();
+        const double avance = proyectarPuntoEnLinea(lineaTramo, punto);
+        if (esFraccionInterior(lineaTramo, avance)
+            && QLineF(lineaTramo.pointAt(avance), punto).length() <= toleranciaCruce)
+            plan.getDivisiones().append(DivisionEdicion(tramo.getNodos(), 0, avance));
     }
-    comprobarCapacidad(grafo, plan);
+    comprobarCapacidadGrafo(grafo, plan);
     return plan;
 }
 
-QVector<QPair<int, int>> tramosAfectados(const PlanEdicion &plan)
+QVector<QPair<int, int>> obtenerTramosAfectados(const PlanEdicion &plan)
 {
     QVector<QPair<int, int>> afectados;
-    for (const Division &division : plan.divisiones)
-        afectados.append(division.nodos);
+    const QVector<DivisionEdicion> &divisiones = plan.getDivisiones();
+    for (int i = 0; i < divisiones.size(); ++i)
+        afectados.append(divisiones[i].getNodos());
     return afectados;
 }
 
-void reservarIds(const Grafo &grafo, PlanEdicion &plan)
+void reservarIdsCruces(const Grafo &grafo, PlanEdicion &plan)
 {
     int siguiente = 0;
-    for (Cruce &cruce : plan.cruces)
+    QVector<CruceEdicion> &cruces = plan.getCruces();
+    for (int i = 0; i < cruces.size(); ++i)
     {
-        if (cruce.nodo >= 0)
+        if (cruces[i].getNodo() >= 0)
             continue;
         while (grafo.tieneNodo(siguiente))
             ++siguiente;
-        cruce.nodo = siguiente++;
+        cruces[i].setNodo(siguiente++);
     }
 }
 
-void planearDivision(const Grafo &grafo, const Division &division, int cruce,
-                     QVector<AristaPlaneada> &altas, QSet<QPair<int, int>> &bajas)
+void agregarDireccionDivision(const Grafo &grafo, int desde, int hasta, int cruce,
+                              double fraccion, QVector<AristaPlaneada> &altas,
+                              QVector<QPair<int, int>> &bajas)
 {
-    const auto agregarDireccion = [&](int desde, int hasta, double fraccion) {
-        const Arista *arista = grafo.obtenerArista(desde, hasta);
-        if (arista == nullptr)
-            return;
-        bajas.insert({desde, hasta});
-        const double base = arista->getPesoInicial();
-        const double actual = arista->getPeso();
-        const bool avenida = arista->getEsAvenida();
-        altas.append({desde, cruce, base * fraccion, actual * fraccion, avenida});
-        altas.append({cruce, hasta, base * (1.0 - fraccion), actual * (1.0 - fraccion), avenida});
-    };
-    agregarDireccion(division.nodos.first, division.nodos.second, division.fraccion);
-    agregarDireccion(division.nodos.second, division.nodos.first, 1.0 - division.fraccion);
+    const Arista *arista = grafo.obtenerArista(desde, hasta);
+    if (arista == nullptr)
+        return;
+    const QPair<int, int> par(desde, hasta);
+    if (!bajas.contains(par))
+        bajas.append(par);
+    const double base = arista->getPesoInicial();
+    const double actual = arista->getPeso();
+    const bool avenida = arista->getEsAvenida();
+    altas.append(AristaPlaneada(desde, cruce, base * fraccion, actual * fraccion, avenida));
+    altas.append(AristaPlaneada(cruce, hasta, base * (1.0 - fraccion), actual * (1.0 - fraccion), avenida));
 }
 
-QString comprobarAristas(const Grafo &grafo, const QVector<AristaPlaneada> &altas,
-                         const QSet<QPair<int, int>> &bajas)
+void planearDivisionTramo(const Grafo &grafo, const DivisionEdicion &division, int cruce,
+                          QVector<AristaPlaneada> &altas, QVector<QPair<int, int>> &bajas)
 {
-    QSet<QPair<int, int>> vistas;
-    for (const AristaPlaneada &arista : altas)
+    const QPair<int, int> nodos = division.getNodos();
+    const double fraccion = division.getFraccion();
+    agregarDireccionDivision(grafo, nodos.first, nodos.second, cruce, fraccion, altas, bajas);
+    agregarDireccionDivision(grafo, nodos.second, nodos.first, cruce, 1.0 - fraccion, altas, bajas);
+}
+
+QString comprobarAristasPlaneadas(const Grafo &grafo, const QVector<AristaPlaneada> &altas,
+                                  const QVector<QPair<int, int>> &bajas)
+{
+    QVector<QPair<int, int>> vistas;
+    for (int i = 0; i < altas.size(); ++i)
     {
-        const QPair<int, int> ids(arista.origen, arista.destino);
-        if (ids.first == ids.second || arista.peso <= 0.0 || arista.pesoInicial <= 0.0
-            || !std::isfinite(arista.peso) || !std::isfinite(arista.pesoInicial))
+        const AristaPlaneada &arista = altas[i];
+        const QPair<int, int> ids(arista.getOrigen(), arista.getDestino());
+        if (ids.first == ids.second || arista.getPeso() <= 0.0 || arista.getPesoInicial() <= 0.0
+            || !std::isfinite(arista.getPeso()) || !std::isfinite(arista.getPesoInicial()))
             return QStringLiteral("Hay un tramo demasiado corto para dividir esta calle.");
         if (vistas.contains(ids)
             || (grafo.existeAristaDirigida(ids.first, ids.second) && !bajas.contains(ids)))
             return QStringLiteral("La edición duplicaría un tramo existente.");
-        vistas.insert(ids);
+        vistas.append(ids);
     }
     return {};
 }
 
-void aplicarAristas(Grafo &grafo, const QVector<AristaPlaneada> &altas,
-                    const QSet<QPair<int, int>> &bajas)
+void aplicarAristasPlaneadas(Grafo &grafo, const QVector<AristaPlaneada> &altas,
+                             const QVector<QPair<int, int>> &bajas)
 {
     ListaAristas *aristas = grafo.getAristas();
-    for (const auto &ids : bajas)
-        aristas->eliminarArista(ids.first, ids.second);
-    for (const AristaPlaneada &datos : altas)
+    for (int i = 0; i < bajas.size(); ++i)
+        aristas->eliminarArista(bajas[i].first, bajas[i].second);
+    for (int i = 0; i < altas.size(); ++i)
     {
-        auto *arista = new Arista(datos.origen, datos.destino, datos.peso, datos.esAvenida);
-        arista->setPesoInicial(datos.pesoInicial);
+        const AristaPlaneada &datos = altas[i];
+        Arista *arista = new Arista(datos.getOrigen(), datos.getDestino(), datos.getPeso(), datos.getEsAvenida());
+        arista->setPesoInicial(datos.getPesoInicial());
         aristas->agregar(arista);
     }
 }
+
+void Grafo::registrarModificacionEstructura()
+{
+    ++revisionPesos;
+    ++revisionGrafo;
 }
 
 ResultadoRuta Grafo::reconstruirRuta(int anterior[], int origen, int destino, int explorados) const
@@ -362,11 +670,11 @@ ResultadoRuta Grafo::reconstruirRuta(int anterior[], int origen, int destino, in
         return resultado;
     }
 
-    int inverso[limiteNodos];
+    int inverso[limiteMaximoNodos];
     int total = 0;
     int actual = destino;
 
-    while (actual != -1 && total < limiteNodos)
+    while (actual != -1 && total < limiteMaximoNodos)
     {
         inverso[total] = actual;
         total++;
@@ -397,12 +705,18 @@ ResultadoRuta Grafo::reconstruirRuta(int anterior[], int origen, int destino, in
     return resultado;
 }
 
-Grafo::Grafo(QObject *parent) : QObject(parent)
+Grafo::Grafo()
 {
     nodos = new ListaNodos();
     aristas = new ListaAristas();
     multiplicadorHoraPico = 1.0;
-    connect(this, &Grafo::grafoModificado, this, [this] { ++revisionPesos; });
+    for (int i = 0; i < limiteMaximoNodos; ++i)
+    {
+        identidadesNodos[i] = 0;
+    }
+    siguienteIdentidadNodo = 1;
+    revisionPesos = 0;
+    revisionGrafo = 0;
 }
 
 Grafo::~Grafo()
@@ -433,19 +747,24 @@ bool Grafo::tieneNodo(int id) const
     return buscarNodo(id) != nullptr;
 }
 
-quint64 Grafo::getIdentidadNodo(int id) const
+int Grafo::getIdentidadNodo(int id) const
 {
-    return id >= 0 && id < limiteNodos ? identidadesNodos[id] : 0;
+    return id >= 0 && id < limiteMaximoNodos ? identidadesNodos[id] : 0;
 }
 
-quint64 Grafo::getRevisionPesos() const
+int Grafo::getRevisionPesos() const
 {
     return revisionPesos;
 }
 
+int Grafo::getRevisionGrafo() const
+{
+    return revisionGrafo;
+}
+
 int Grafo::obtenerSiguienteIdDisponible() const
 {
-    for (int i = 0; i < limiteNodos; i++)
+    for (int i = 0; i < limiteMaximoNodos; i++)
     {
         if (buscarNodo(i) == nullptr)
         {
@@ -457,24 +776,24 @@ int Grafo::obtenerSiguienteIdDisponible() const
 
 int Grafo::agregarNodo(int id, QString nombre, int x, int y, QString tipo)
 {
-    if (id < 0 || id >= limiteNodos || buscarNodo(id) != nullptr)
+    if (id < 0 || id >= limiteMaximoNodos || buscarNodo(id) != nullptr)
     {
         return -1;
     }
 
     nodos->agregar(new Nodo(id, nombre, x, y, tipo));
     identidadesNodos[id] = siguienteIdentidadNodo++;
-    emit grafoModificado();
+    registrarModificacionEstructura();
     return id;
 }
 
 int Grafo::agregarNodoNuevo(QString nombre, QPointF posicion, QString tipo)
 {
     if (!std::isfinite(posicion.x()) || !std::isfinite(posicion.y())
-        || posicion.x() < std::numeric_limits<int>::min()
-        || posicion.x() > std::numeric_limits<int>::max()
-        || posicion.y() < std::numeric_limits<int>::min()
-        || posicion.y() > std::numeric_limits<int>::max())
+        || posicion.x() < -coordenadaMaximaMapa
+        || posicion.x() > coordenadaMaximaMapa
+        || posicion.y() < -coordenadaMaximaMapa
+        || posicion.y() > coordenadaMaximaMapa)
         return -1;
 
     int id = obtenerSiguienteIdDisponible();
@@ -482,7 +801,7 @@ int Grafo::agregarNodoNuevo(QString nombre, QPointF posicion, QString tipo)
     {
         return -1;
     }
-    return agregarNodo(id, nombre, static_cast<int>(posicion.x()), static_cast<int>(posicion.y()), tipo);
+    return agregarNodo(id, nombre, int(posicion.x()), int(posicion.y()), tipo);
 }
 
 bool Grafo::eliminarNodo(int id)
@@ -495,7 +814,7 @@ bool Grafo::eliminarNodo(int id)
     aristas->eliminarAristasDeNodo(id);
     bool ok = nodos->eliminarPorId(id);
     identidadesNodos[id] = 0;
-    emit grafoModificado();
+    registrarModificacionEstructura();
     return ok;
 }
 
@@ -508,16 +827,16 @@ double Grafo::sugerirPeso(int nodoA, int nodoB, bool esAvenida) const
         return 1.0;
     }
 
-    double distancia = QLineF(a->getPosicion(), b->getPosicion()).length() / 130.0;
+    double distancia = QLineF(a->getPosicion(), b->getPosicion()).length() / 400.0;
     if (esAvenida)
     {
         distancia = distancia * 0.75;
     }
 
     double redondeado = std::round(distancia * 10.0) / 10.0;
-    if (redondeado < 0.5)
+    if (redondeado < 0.25)
     {
-        redondeado = 0.5;
+        redondeado = 0.25;
     }
     return redondeado;
 }
@@ -542,7 +861,7 @@ bool Grafo::agregarArista(int origen, int destino, double peso, bool esAvenida)
     }
 
     aristas->agregar(new Arista(origen, destino, pesoCalculado, esAvenida));
-    emit grafoModificado();
+    registrarModificacionEstructura();
     return true;
 }
 
@@ -562,28 +881,32 @@ bool Grafo::agregarCalleDoble(int nodoA, int nodoB, double peso, bool esAvenida)
     return ab || ba;
 }
 
-Grafo::RevisionCalle Grafo::previsualizarCalle(int origen, int destino, bool) const
+RevisionCalle Grafo::previsualizarCalle(int origen, int destino, bool) const
 {
-    const PlanEdicion plan = prepararCalle(*this, origen, destino);
+    const PlanEdicion plan = prepararPlanCalle(*this, origen, destino);
     RevisionCalle revision;
-    revision.valida = plan.motivo.isEmpty();
-    revision.motivo = plan.motivo;
-    revision.peso = plan.peso;
-    revision.tramosAfectados = tramosAfectados(plan);
-    for (int indice : plan.recorrido)
+    revision.setValida(plan.getMotivo().isEmpty());
+    revision.setMotivo(plan.getMotivo());
+    revision.setPeso(plan.getPeso());
+    revision.setTramosAfectados(obtenerTramosAfectados(plan));
+    const QVector<int> &recorrido = plan.getRecorrido();
+    const QVector<CruceEdicion> &cruces = plan.getCruces();
+    const QVector<DivisionEdicion> &divisiones = plan.getDivisiones();
+    for (int i = 0; i < recorrido.size(); ++i)
     {
-        const Cruce &cruce = plan.cruces[indice];
+        const int indice = recorrido[i];
+        const CruceEdicion &cruce = cruces[indice];
         bool divide = false;
-        for (const Division &division : plan.divisiones)
+        for (int j = 0; j < divisiones.size(); ++j)
         {
-            if (division.indiceCruce == indice)
+            if (divisiones[j].getIndiceCruce() == indice)
             {
                 divide = true;
                 break;
             }
         }
-        if (divide || (cruce.fraccion > 0.0 && cruce.fraccion < 1.0))
-            revision.cruces.append(cruce.posicion);
+        if (divide || (cruce.getFraccion() > 0.0 && cruce.getFraccion() < 1.0))
+            revision.agregarCruce(cruce.getPosicion());
     }
     return revision;
 }
@@ -591,100 +914,98 @@ Grafo::RevisionCalle Grafo::previsualizarCalle(int origen, int destino, bool) co
 bool Grafo::crearCalleEditada(int origen, int destino, bool dobleSentido, bool conectarCruces,
                               QString *motivo)
 {
-    PlanEdicion plan = prepararCalle(*this, origen, destino);
-    if (plan.motivo.isEmpty() && !conectarCruces
-        && (!plan.divisiones.isEmpty() || plan.cruces.size() > 2))
-        plan.motivo = QStringLiteral("Confirma los cruces para conectar la calle.");
-    if (!plan.motivo.isEmpty())
+    PlanEdicion plan = prepararPlanCalle(*this, origen, destino);
+    if (plan.getMotivo().isEmpty() && !conectarCruces
+        && (!plan.getDivisiones().isEmpty() || plan.getCruces().size() > 2))
+        plan.setMotivo(QStringLiteral("Confirma los cruces para conectar la calle."));
+    if (!plan.getMotivo().isEmpty())
     {
         if (motivo != nullptr)
-            *motivo = plan.motivo;
+            *motivo = plan.getMotivo();
         return false;
     }
 
     QVector<int> nuevos;
-    for (int i = 0; i < plan.cruces.size(); ++i)
-        if (plan.cruces[i].nodo < 0)
+    for (int i = 0; i < plan.getCruces().size(); ++i)
+        if (plan.getCruces()[i].getNodo() < 0)
             nuevos.append(i);
-    reservarIds(*this, plan);
+    reservarIdsCruces(*this, plan);
 
     QVector<AristaPlaneada> altas;
-    QSet<QPair<int, int>> bajas;
-    for (const Division &division : plan.divisiones)
-        planearDivision(*this, division, plan.cruces[division.indiceCruce].nodo, altas, bajas);
-    for (int i = 1; i < plan.recorrido.size(); ++i)
+    QVector<QPair<int, int>> bajas;
+    const QVector<DivisionEdicion> &divisiones = plan.getDivisiones();
+    const QVector<CruceEdicion> &cruces = plan.getCruces();
+    for (int i = 0; i < divisiones.size(); ++i)
+        planearDivisionTramo(*this, divisiones[i], cruces[divisiones[i].getIndiceCruce()].getNodo(), altas, bajas);
+    const QVector<int> &recorrido = plan.getRecorrido();
+    for (int i = 1; i < recorrido.size(); ++i)
     {
-        const Cruce &a = plan.cruces[plan.recorrido[i - 1]];
-        const Cruce &b = plan.cruces[plan.recorrido[i]];
-        const double peso = plan.peso * (b.fraccion - a.fraccion);
-        altas.append({a.nodo, b.nodo, peso, peso, false});
+        const CruceEdicion &a = cruces[recorrido[i - 1]];
+        const CruceEdicion &b = cruces[recorrido[i]];
+        const double peso = plan.getPeso() * (b.getFraccion() - a.getFraccion());
+        altas.append(AristaPlaneada(a.getNodo(), b.getNodo(), peso, peso, false));
         if (dobleSentido)
-            altas.append({b.nodo, a.nodo, peso, peso, false});
+            altas.append(AristaPlaneada(b.getNodo(), a.getNodo(), peso, peso, false));
     }
 
-    const QString error = comprobarAristas(*this, altas, bajas);
+    const QString error = comprobarAristasPlaneadas(*this, altas, bajas);
     if (motivo != nullptr)
         *motivo = error;
     if (!error.isEmpty())
         return false;
 
+    for (int i = 0; i < nuevos.size(); ++i)
     {
-        const QSignalBlocker bloquear(this);
-        for (int indice : nuevos)
-        {
-            const Cruce &cruce = plan.cruces[indice];
-            agregarNodo(cruce.nodo, QStringLiteral("Cruce %1").arg(cruce.nodo),
-                        qRound(cruce.posicion.x()), qRound(cruce.posicion.y()), QStringLiteral("Normal"));
-        }
-        aplicarAristas(*this, altas, bajas);
+        const CruceEdicion &cruce = cruces[nuevos[i]];
+        agregarNodo(cruce.getNodo(), QStringLiteral("Cruce %1").arg(cruce.getNodo()),
+                    qRound(cruce.getPosicion().x()), qRound(cruce.getPosicion().y()), QStringLiteral("Normal"));
     }
-    emit grafoModificado();
+    aplicarAristasPlaneadas(*this, altas, bajas);
+    registrarModificacionEstructura();
     return true;
 }
 
-Grafo::RevisionNodo Grafo::previsualizarNodo(QPointF posicion, double radioCalle) const
+RevisionNodo Grafo::previsualizarNodo(QPointF posicion, double radioCalle) const
 {
-    const PlanEdicion plan = prepararNodo(*this, posicion, radioCalle);
+    const PlanEdicion plan = prepararPlanNodo(*this, posicion, radioCalle);
     RevisionNodo revision;
-    revision.valida = plan.motivo.isEmpty();
-    revision.motivo = plan.motivo;
-    revision.posicion = plan.cruces.isEmpty() ? posicion : plan.cruces.first().posicion;
-    revision.divideCalle = !plan.divisiones.isEmpty();
-    revision.tramosAfectados = tramosAfectados(plan);
+    revision.setValida(plan.getMotivo().isEmpty());
+    revision.setMotivo(plan.getMotivo());
+    revision.setPosicion(plan.getCruces().isEmpty() ? posicion : plan.getCruces().first().getPosicion());
+    revision.setDivideCalle(!plan.getDivisiones().isEmpty());
+    revision.setTramosAfectados(obtenerTramosAfectados(plan));
     return revision;
 }
 
 int Grafo::crearNodoEditado(QPointF posicion, QString nombre, QString tipo, bool dividirCalle,
                             QString *motivo, double radioCalle)
 {
-    PlanEdicion plan = prepararNodo(*this, posicion, radioCalle);
-    if (plan.motivo.isEmpty() && !dividirCalle && !plan.divisiones.isEmpty())
-        plan.motivo = QStringLiteral("Confirma la división de la calle para crear el cruce.");
-    if (!plan.motivo.isEmpty())
+    PlanEdicion plan = prepararPlanNodo(*this, posicion, radioCalle);
+    if (plan.getMotivo().isEmpty() && !dividirCalle && !plan.getDivisiones().isEmpty())
+        plan.setMotivo(QStringLiteral("Confirma la división de la calle para crear el cruce."));
+    if (!plan.getMotivo().isEmpty())
     {
         if (motivo != nullptr)
-            *motivo = plan.motivo;
+            *motivo = plan.getMotivo();
         return -1;
     }
-    reservarIds(*this, plan);
-    const Cruce &cruce = plan.cruces.first();
+    reservarIdsCruces(*this, plan);
+    const CruceEdicion &cruce = plan.getCruces().first();
     QVector<AristaPlaneada> altas;
-    QSet<QPair<int, int>> bajas;
-    for (const Division &division : plan.divisiones)
-        planearDivision(*this, division, cruce.nodo, altas, bajas);
-    const QString error = comprobarAristas(*this, altas, bajas);
+    QVector<QPair<int, int>> bajas;
+    const QVector<DivisionEdicion> &divisiones = plan.getDivisiones();
+    for (int i = 0; i < divisiones.size(); ++i)
+        planearDivisionTramo(*this, divisiones[i], cruce.getNodo(), altas, bajas);
+    const QString error = comprobarAristasPlaneadas(*this, altas, bajas);
     if (motivo != nullptr)
         *motivo = error;
     if (!error.isEmpty())
         return -1;
 
-    {
-        const QSignalBlocker bloquear(this);
-        agregarNodo(cruce.nodo, nombre, qRound(cruce.posicion.x()), qRound(cruce.posicion.y()), tipo);
-        aplicarAristas(*this, altas, bajas);
-    }
-    emit grafoModificado();
-    return cruce.nodo;
+    agregarNodo(cruce.getNodo(), nombre, qRound(cruce.getPosicion().x()), qRound(cruce.getPosicion().y()), tipo);
+    aplicarAristasPlaneadas(*this, altas, bajas);
+    registrarModificacionEstructura();
+    return cruce.getNodo();
 }
 
 bool Grafo::eliminarCalle(int nodoA, int nodoB)
@@ -693,7 +1014,7 @@ bool Grafo::eliminarCalle(int nodoA, int nodoB)
     bool ba = aristas->eliminarArista(nodoB, nodoA);
     if (ab || ba)
     {
-        emit grafoModificado();
+        registrarModificacionEstructura();
         return true;
     }
     return false;
@@ -724,7 +1045,7 @@ bool Grafo::cambiarPeso(int nodoA, int nodoB, double nuevoPeso)
         ba->setPesoInicial(nuevoPeso);
     }
 
-    emit grafoModificado();
+    registrarModificacionEstructura();
     return true;
 }
 
@@ -732,9 +1053,9 @@ void Grafo::limpiar()
 {
     nodos->limpiar();
     aristas->limpiar();
-    for (int i = 0; i < limiteNodos; ++i)
+    for (int i = 0; i < limiteMaximoNodos; ++i)
         identidadesNodos[i] = 0;
-    emit grafoModificado();
+    registrarModificacionEstructura();
 }
 
 Arista *Grafo::obtenerArista(int origen, int destino) const
@@ -788,8 +1109,8 @@ void Grafo::registrarUso(int origen, int destino)
         return;
     }
 
-    double maximo = ab->getPesoInicial() * 3.0;
-    double nuevoPeso = ab->getPeso() + 0.2;
+    double maximo = ab->getPesoInicial() * 1.5;
+    double nuevoPeso = ab->getPeso() + 0.05;
     if (nuevoPeso > maximo)
     {
         nuevoPeso = maximo;
@@ -804,6 +1125,41 @@ void Grafo::registrarUso(int origen, int destino)
         ba->setPeso(nuevoPeso);
     }
     ++revisionPesos;
+}
+
+void Grafo::disiparCongestion(double dt)
+{
+    if (aristas == nullptr || dt <= 0.0)
+    {
+        return;
+    }
+
+    const double tasaDisipacion = dt * 0.008;
+    bool cambio = false;
+
+    for (ElementoArista *elemento = aristas->getPrimero(); elemento != nullptr;
+         elemento = elemento->getSiguiente())
+    {
+        Arista *arista = elemento->getArista();
+        if (arista != nullptr && arista->getPeso() > arista->getPesoInicial())
+        {
+            double nuevoPeso = arista->getPeso() - tasaDisipacion;
+            if (nuevoPeso < arista->getPesoInicial())
+            {
+                nuevoPeso = arista->getPesoInicial();
+            }
+            if (nuevoPeso != arista->getPeso())
+            {
+                arista->setPeso(nuevoPeso);
+                cambio = true;
+            }
+        }
+    }
+
+    if (cambio)
+    {
+        ++revisionPesos;
+    }
 }
 
 int Grafo::nodoMasCercano(QPointF punto, double distanciaMaxima) const
@@ -851,7 +1207,7 @@ double Grafo::getMultiplicadorHoraPico() const
 
 ResultadoRuta Grafo::buscarRutaBFS(int origen, int destino) const
 {
-    const int MAX = limiteNodos;
+    const int MAX = limiteMaximoNodos;
     if (origen < 0 || origen >= MAX || destino < 0 || destino >= MAX)
     {
         return ResultadoRuta();
@@ -907,7 +1263,7 @@ ResultadoRuta Grafo::buscarRutaBFS(int origen, int destino) const
 
 ResultadoRuta Grafo::buscarRutaDFS(int origen, int destino) const
 {
-    const int MAX = limiteNodos;
+    const int MAX = limiteMaximoNodos;
     if (origen < 0 || origen >= MAX || destino < 0 || destino >= MAX)
     {
         return ResultadoRuta();
@@ -970,7 +1326,7 @@ ResultadoRuta Grafo::buscarRutaDFS(int origen, int destino) const
 
 ResultadoRuta Grafo::buscarRutaDijkstra(int origen, int destino) const
 {
-    const int MAX = limiteNodos;
+    const int MAX = limiteMaximoNodos;
     if (origen < 0 || origen >= MAX || destino < 0 || destino >= MAX)
     {
         return ResultadoRuta();
@@ -1047,18 +1403,28 @@ ResultadoRuta Grafo::buscarRutaDijkstra(int origen, int destino) const
     return reconstruirRuta(anterior, origen, destino, explorados);
 }
 
-double Grafo::calcularTarifa(int saltos, double tiempoPonderado, QString tipoDestino, QString periodo)
+double calcularTaximetro(int saltos, double tiempoPonderado)
 {
     double base = 4600.0;
     double costoDistancia = saltos * 1625.0;
     double costoTiempo = tiempoPonderado * 1625.0;
-    double taximetro = base + costoDistancia + costoTiempo;
+    return base + costoDistancia + costoTiempo;
+}
+
+double calcularTarifa(int saltos, double tiempoPonderado, QString tipoDestino, QString periodo)
+{
+    double taximetro = calcularTaximetro(saltos, tiempoPonderado);
 
     if (taximetro < 8100.0)
     {
         taximetro = 8100.0;
     }
 
+    return taximetro + calcularRecargos(tipoDestino, periodo);
+}
+
+double calcularRecargos(QString tipoDestino, QString periodo)
+{
     double recargoDestino = 0.0;
     if (tipoDestino == "Aeropuerto")
     {
@@ -1079,17 +1445,17 @@ double Grafo::calcularTarifa(int saltos, double tiempoPonderado, QString tipoDes
         recargoNocturno = 2000.0;
     }
 
-    return taximetro + recargoDestino + recargoNocturno;
+    return recargoDestino + recargoNocturno;
 }
 
-QString Grafo::formatearPesos(double valor)
+QString formatearPesos(double valor)
 {
     if (!std::isfinite(valor))
         return QStringLiteral("$ —");
 
     const double absoluto = std::abs(valor);
-    if (absoluto >= static_cast<double>(std::numeric_limits<qint64>::max()))
+    if (absoluto >= 1000000000.0)
         return QStringLiteral("$ ") + QLocale(QLocale::English).toString(absoluto, 'f', 0);
 
-    return QStringLiteral("$ ") + QLocale(QLocale::English).toString(qRound64(absoluto));
+    return QStringLiteral("$ ") + QLocale(QLocale::English).toString(qRound(absoluto));
 }

@@ -2,37 +2,49 @@
 
 #include <cmath>
 
-namespace
-{
 const double segundosPorDia = 720.0;
 const double minutosPorSegundo = 1440.0 / segundosPorDia;
 const double toleranciaSegundos = 0.000000001;
 
-struct CambioPeriodo
-{
-    int minuto;
-    QString periodo;
-    QString nombre;
-};
-
 const int cantidadCambios = 8;
-const CambioPeriodo agenda[cantidadCambios] = {
-    {5 * 60, "Normal", "Normal"},
-    {6 * 60 + 30, "HoraPico", "Pico"},
-    {9 * 60, "Normal", "Normal"},
-    {11 * 60 + 30, "HoraPico", "Pico"},
-    {14 * 60, "Normal", "Normal"},
-    {17 * 60, "HoraPico", "Pico"},
-    {19 * 60 + 30, "Normal", "Normal"},
-    {21 * 60, "Nocturno", "Nocturno"},
+const int agendaMinutos[cantidadCambios] = {
+    5 * 60,
+    6 * 60 + 30,
+    9 * 60,
+    11 * 60 + 30,
+    14 * 60,
+    17 * 60,
+    19 * 60 + 30,
+    21 * 60
 };
 
-QString formatearHora(int minuto)
+const char *agendaPeriodos[cantidadCambios] = {
+    "Normal",
+    "HoraPico",
+    "Normal",
+    "HoraPico",
+    "Normal",
+    "HoraPico",
+    "Normal",
+    "Nocturno"
+};
+
+const char *agendaNombres[cantidadCambios] = {
+    "Normal",
+    "Pico",
+    "Normal",
+    "Pico",
+    "Normal",
+    "Pico",
+    "Normal",
+    "Nocturno"
+};
+
+QString formatearHoraReloj(int minuto)
 {
     return QStringLiteral("%1:%2")
         .arg(minuto / 60, 2, 10, QLatin1Char('0'))
         .arg(minuto % 60, 2, 10, QLatin1Char('0'));
-}
 }
 
 RelojSimulacion::RelojSimulacion()
@@ -43,7 +55,7 @@ RelojSimulacion::RelojSimulacion()
 
 void RelojSimulacion::reiniciar()
 {
-    segundosDelDia = agenda[0].minuto / minutosPorSegundo;
+    segundosDelDia = agendaMinutos[0] / minutosPorSegundo;
     dia = 1;
 }
 
@@ -83,12 +95,12 @@ void RelojSimulacion::setModo(int modo)
 
 QString RelojSimulacion::textoHora() const
 {
-    return formatearHora(minutoActual());
+    return formatearHoraReloj(minutoActual());
 }
 
 int RelojSimulacion::minutoActual() const
 {
-    return static_cast<int>((segundosDelDia + toleranciaSegundos) * minutosPorSegundo);
+    return int((segundosDelDia + toleranciaSegundos) * minutosPorSegundo);
 }
 
 QString RelojSimulacion::periodoActual() const
@@ -110,11 +122,11 @@ QString RelojSimulacion::periodoActual() const
     QString periodo = "Nocturno";
     for (int i = 0; i < cantidadCambios; i++)
     {
-        if (minuto < agenda[i].minuto)
+        if (minuto < agendaMinutos[i])
         {
             break;
         }
-        periodo = agenda[i].periodo;
+        periodo = QString::fromUtf8(agendaPeriodos[i]);
     }
     return periodo;
 }
@@ -128,14 +140,15 @@ QString RelojSimulacion::textoProximoPeriodo() const
     int indiceProximoCambio = 0;
     for (int i = 0; i < cantidadCambios; i++)
     {
-        if (minuto < agenda[i].minuto)
+        if (minuto < agendaMinutos[i])
         {
             indiceProximoCambio = i;
             break;
         }
     }
-    return QStringLiteral("%1 a las %2").arg(agenda[indiceProximoCambio].nombre,
-        formatearHora(agenda[indiceProximoCambio].minuto));
+    return QStringLiteral("%1 a las %2").arg(
+        QString::fromUtf8(agendaNombres[indiceProximoCambio]),
+        formatearHoraReloj(agendaMinutos[indiceProximoCambio]));
 }
 
 double RelojSimulacion::oscuridad() const

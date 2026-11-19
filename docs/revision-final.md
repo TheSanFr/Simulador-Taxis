@@ -2,6 +2,8 @@
 
 Fecha de la revisión 18 de noviembre de 2026.
 
+Actualización funcional del 19 de noviembre de 2026. Se incorporó el taxímetro por recorrido real y se calibraron los pesos y el techo de congestión. Los detalles vigentes se describen en [Arquitectura](arquitectura.md). El inventario y las pruebas siguientes corresponden a la revisión anterior a ese cambio.
+
 Se leyeron los 28 encabezados, las 28 implementaciones C++, los dos formularios, la hoja de estilos, las rutas de recursos, CMake y la documentación de arquitectura. La revisión incluye constructores, destructores, getters, setters, métodos de negocio, dibujo, señales y auxiliares geométricos. La lista inferior identifica los 348 cuerpos revisados, que incluyen 329 métodos de clase, 18 auxiliares libres y main.
 
 ## Correcciones realizadas

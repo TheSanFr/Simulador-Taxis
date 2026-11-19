@@ -11,10 +11,6 @@ private:
 
 public:
     Cola();
-
-    Cola(const Cola &) = delete;
-    Cola &operator=(const Cola &) = delete;
-
     ~Cola();
 
     void encolar(int dato);

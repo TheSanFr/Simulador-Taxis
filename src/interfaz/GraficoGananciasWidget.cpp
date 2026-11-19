@@ -5,8 +5,8 @@
 
 #include <QChart>
 #include <QChartView>
-#include <QFrame>
 #include <QColor>
+#include <QFrame>
 #include <QLegend>
 #include <QLineSeries>
 #include <QMargins>
@@ -47,7 +47,6 @@ void GraficoGananciasWidget::reconstruirSeries()
         series[cantidadSeries] = s;
         cantidadSeries++;
     }
-
 }
 
 void GraficoGananciasWidget::enMuestra(double segundos)
@@ -116,13 +115,16 @@ GraficoGananciasWidget::GraficoGananciasWidget(QWidget *parent) : QWidget(parent
 
     grafico->addAxis(ejeX, Qt::AlignBottom);
     grafico->addAxis(ejeY, Qt::AlignLeft);
-    for (QValueAxis *eje : {ejeX, ejeY})
-    {
-        eje->setLabelsColor(QColor("#a5b4c3"));
-        eje->setGridLineColor(QColor("#2b3a49"));
-        eje->setLinePenColor(QColor("#526579"));
-        eje->setTitleBrush(QColor("#c5d2de"));
-    }
+
+    ejeX->setLabelsColor(QColor("#a5b4c3"));
+    ejeX->setGridLineColor(QColor("#2b3a49"));
+    ejeX->setLinePenColor(QColor("#526579"));
+    ejeX->setTitleBrush(QColor("#c5d2de"));
+
+    ejeY->setLabelsColor(QColor("#a5b4c3"));
+    ejeY->setGridLineColor(QColor("#2b3a49"));
+    ejeY->setLinePenColor(QColor("#526579"));
+    ejeY->setTitleBrush(QColor("#c5d2de"));
 
     vista = new QChartView(grafico, this);
     vista->setRenderHint(QPainter::Antialiasing);
@@ -138,18 +140,7 @@ void GraficoGananciasWidget::setSimulacion(Simulacion *nuevaSim)
 {
     if (sim == nuevaSim)
         return;
-    if (sim != nullptr)
-        disconnect(sim, nullptr, this, nullptr);
 
     sim = nuevaSim;
-    if (sim != nullptr)
-    {
-        connect(sim, &Simulacion::muestraGrafico, this, &GraficoGananciasWidget::enMuestra);
-        connect(sim, &Simulacion::reinicioCompletado, this, &GraficoGananciasWidget::reconstruirSeries);
-        connect(sim, &QObject::destroyed, this, [this] {
-            sim = nullptr;
-            reconstruirSeries();
-        });
-    }
     reconstruirSeries();
 }

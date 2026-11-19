@@ -18,11 +18,14 @@ Taxi::Taxi(int id, QString nombre, QColor color, int nodoInicial, Grafo *grafo)
     this->nodoSiguiente = -1;
     this->progresoTramo = 0.0;
     this->duracionTramo = 1.0;
+    this->pesoTramo = 0.0;
     this->esperaPensar = 0.0;
     this->cantidadRuta = 0;
     this->llevaPasajero = false;
     this->destinoPasajeroABordo = -1;
-    this->tarifaPasajeroABordo = 0.0;
+    this->saltosCarrera = 0;
+    this->tiempoPonderadoCarrera = 0.0;
+    this->recargosCarrera = 0.0;
     this->idPasajeroObjetivo = -1;
     this->viajes = 0;
     this->ingresos = 0.0;
@@ -118,7 +121,35 @@ int Taxi::getDestinoPasajeroABordo() const
 
 double Taxi::getTarifaPasajeroABordo() const
 {
-    return tarifaPasajeroABordo;
+    if (!llevaPasajero)
+    {
+        return 0.0;
+    }
+    return calcularTarifa(saltosCarrera, tiempoPonderadoCarrera, "Normal", "Normal") + recargosCarrera;
+}
+
+double Taxi::getValorTaximetro() const
+{
+    if (!llevaPasajero)
+    {
+        return 0.0;
+    }
+    return calcularTaximetro(saltosCarrera, tiempoPonderadoCarrera);
+}
+
+double Taxi::getRecargosCarrera() const
+{
+    return recargosCarrera;
+}
+
+int Taxi::getSaltosCarrera() const
+{
+    return saltosCarrera;
+}
+
+double Taxi::getTiempoPonderadoCarrera() const
+{
+    return tiempoPonderadoCarrera;
 }
 
 int Taxi::getIdPasajeroObjetivo() const
@@ -171,11 +202,17 @@ void Taxi::sumarExplorados(int cantidad)
     this->nodosExplorados += cantidad;
 }
 
-void Taxi::subirPasajero(int destino, double tarifa)
+void Taxi::subirPasajero(int destino, QString tipoDestino, QString periodo)
 {
+    if (llevaPasajero)
+    {
+        return;
+    }
     llevaPasajero = true;
     destinoPasajeroABordo = destino;
-    tarifaPasajeroABordo = tarifa;
+    saltosCarrera = 0;
+    tiempoPonderadoCarrera = 0.0;
+    recargosCarrera = calcularRecargos(tipoDestino, periodo);
     idPasajeroObjetivo = -1;
 }
 
@@ -185,11 +222,13 @@ void Taxi::bajarPasajero()
     {
         return;
     }
-    ingresos += tarifaPasajeroABordo;
+    ingresos += getTarifaPasajeroABordo();
     viajes++;
     llevaPasajero = false;
     destinoPasajeroABordo = -1;
-    tarifaPasajeroABordo = 0.0;
+    saltosCarrera = 0;
+    tiempoPonderadoCarrera = 0.0;
+    recargosCarrera = 0.0;
     idPasajeroObjetivo = -1;
 }
 
@@ -259,8 +298,8 @@ void Taxi::iniciarTramo(Grafo *grafo)
         return;
     }
 
-    double peso = grafo->obtenerPesoEfectivo(nodoActual, siguiente);
-    duracionTramo = peso * 0.75;
+    pesoTramo = grafo->obtenerPesoEfectivo(nodoActual, siguiente);
+    duracionTramo = pesoTramo * (400.0 / 130.0) * 0.75;
     if (duracionTramo < 0.2)
     {
         duracionTramo = 0.2;
@@ -285,7 +324,12 @@ bool Taxi::avanzarEnTramo(double dt, Grafo *grafo)
     {
         return false;
     }
-    progresoTramo += dt / duracionTramo;
+    double progresoAnterior = progresoTramo;
+    progresoTramo = qMin(1.0, progresoTramo + dt / duracionTramo);
+    if (llevaPasajero)
+    {
+        tiempoPonderadoCarrera += pesoTramo * (progresoTramo - progresoAnterior);
+    }
     if (progresoTramo < 1.0)
     {
         posicion = inicioTramo + (finTramo - inicioTramo) * progresoTramo;
@@ -293,6 +337,10 @@ bool Taxi::avanzarEnTramo(double dt, Grafo *grafo)
     }
 
     enMovimiento = false;
+    if (llevaPasajero)
+    {
+        saltosCarrera++;
+    }
     nodoActual = nodoSiguiente;
     Nodo *n = (grafo != nullptr) ? grafo->buscarNodo(nodoActual) : nullptr;
     posicion = (n != nullptr) ? n->getPosicion() : finTramo;
@@ -330,8 +378,8 @@ QString Taxi::textoEstado(Grafo *grafo) const
     {
         Nodo *dest = (grafo != nullptr) ? grafo->buscarNodo(destinoPasajeroABordo) : nullptr;
         QString nombreDest = (dest != nullptr) ? dest->getNombre() : QStringLiteral("?");
-        return QStringLiteral("Llevando a %1  ·  tarifa %2")
-            .arg(nombreDest, Grafo::formatearPesos(tarifaPasajeroABordo));
+        return QStringLiteral("Llevando a %1  ·  taxímetro %2")
+            .arg(nombreDest, formatearPesos(getValorTaximetro()));
     }
     if (esManual())
     {

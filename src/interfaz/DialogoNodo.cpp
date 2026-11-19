@@ -2,16 +2,36 @@
 
 #include "ui_nodedialog.h"
 
+#include <QColor>
 #include <QDialogButtonBox>
+#include <QGraphicsDropShadowEffect>
 #include <QPushButton>
 #include <QWidget>
+
+void aplicarSombraControlDialogo(QWidget *widget, int desenfoque, int opacidad)
+{
+    if (widget == nullptr)
+        return;
+    QGraphicsDropShadowEffect *sombra = new QGraphicsDropShadowEffect(widget);
+    sombra->setBlurRadius(desenfoque);
+    sombra->setOffset(0, 2);
+    sombra->setColor(QColor(0, 0, 0, opacidad));
+    widget->setGraphicsEffect(sombra);
+}
 
 DialogoNodo::DialogoNodo(QWidget *parent) : QDialog(parent)
 {
     ui = new Ui::NodeDialog();
     ui->setupUi(this);
-    ui->buttonBox->button(QDialogButtonBox::Ok)->setText(QStringLiteral("Crear"));
-    ui->buttonBox->button(QDialogButtonBox::Cancel)->setText(QStringLiteral("Cancelar"));
+    QPushButton *btnCrear = ui->buttonBox->button(QDialogButtonBox::Ok);
+    QPushButton *btnCancelar = ui->buttonBox->button(QDialogButtonBox::Cancel);
+    btnCrear->setText(QStringLiteral("Crear"));
+    btnCancelar->setText(QStringLiteral("Cancelar"));
+
+    aplicarSombraControlDialogo(ui->edtName, 10, 95);
+    aplicarSombraControlDialogo(ui->comboType, 10, 95);
+    aplicarSombraControlDialogo(btnCrear, 12, 110);
+    aplicarSombraControlDialogo(btnCancelar, 10, 95);
 }
 
 DialogoNodo::~DialogoNodo()

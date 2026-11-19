@@ -12,10 +12,6 @@ private:
 
 public:
     ListaNodos();
-
-    ListaNodos(const ListaNodos &) = delete;
-    ListaNodos &operator=(const ListaNodos &) = delete;
-
     ~ListaNodos();
 
     void agregar(Nodo *nodo);

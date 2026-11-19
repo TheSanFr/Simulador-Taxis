@@ -6,6 +6,7 @@
 #include "simulacion/Grafo.h"
 #include "estructuras/ListaAristas.h"
 #include "estructuras/ListaNodos.h"
+#include "interfaz/MainWindow.h"
 #include "modelo/Nodo.h"
 #include "modelo/ResultadoRuta.h"
 #include "taxis/Taxi.h"
@@ -61,7 +62,7 @@ void Simulacion::construirCiudadInicial()
     grafo->limpiar();
     limitesMapa = QRectF(0, 0, 1600, 1080);
 
-    grafo->agregarNodo(0,  "Puerto Norte",        260,  130, "Normal");
+    grafo->agregarNodo(0,  "Puerto Norte",        295,  155, "Normal");
     grafo->agregarNodo(1,  "Mirador del Cerro",   520,  110, "Turistico");
     grafo->agregarNodo(2,  "Parque Norte",        800,  130, "Normal");
     grafo->agregarNodo(3,  "Distrito Financiero", 1080, 120, "Normal");
@@ -227,7 +228,7 @@ void Simulacion::generarPasajero()
         return;
 
     QRandomGenerator &rng = *QRandomGenerator::global();
-    const int origen = origenes[rng.bounded(static_cast<int>(origenes.size()))];
+    const int origen = origenes[rng.bounded(int(origenes.size()))];
 
     QVector<int> alcanzables{origen};
     QSet<int> visitados{origen};
@@ -311,11 +312,14 @@ void Simulacion::revisarParadaTaxi(Taxi *taxi)
         double tarifa = taxi->getTarifaPasajeroABordo();
         taxi->bajarPasajero();
 
-        emit carreraCompletada(taxi->getId(), taxi->getPosicion(), tarifa, taxi->getColor());
+        if (ventana != nullptr)
+        {
+            ventana->notificarCarreraCompletada(taxi->getId(), taxi->getPosicion(), tarifa, taxi->getColor());
+        }
         registrarEvento(QStringLiteral("Viajes"),
                         taxi->esManual() ? QStringLiteral("Completaste una carrera")
                                          : QStringLiteral("%1 completó una carrera").arg(taxi->getNombre()),
-                        QStringLiteral("Llegada a %1 · +%2").arg(nombreNodo(nodoDest), Grafo::formatearPesos(tarifa)),
+                        QStringLiteral("Llegada a %1 · +%2").arg(nombreNodo(nodoDest), formatearPesos(tarifa)),
                         taxi->getId(), nodoDest);
     }
 
@@ -335,17 +339,21 @@ void Simulacion::revisarParadaTaxi(Taxi *taxi)
                 }
                 pasajeros.removeAt(i);
 
-                taxi->subirPasajero(destino, tarifa);
+                Nodo *nodoDestino = grafo->buscarNodo(destino);
+                taxi->subirPasajero(destino, nodoDestino->getTipo(), reloj.periodoActual());
                 if (!taxi->esManual())
                 {
                     taxi->limpiarRuta();
                 }
-                emit pasajeroRecogido(taxi->getId(), origen, destino);
+                if (ventana != nullptr)
+                {
+                    ventana->notificarPasajeroRecogido(taxi->getId(), origen, destino);
+                }
                 registrarEvento(QStringLiteral("Viajes"),
                                 taxi->esManual() ? QStringLiteral("Recogiste a un pasajero")
                                                  : QStringLiteral("%1 recogió a un pasajero").arg(taxi->getNombre()),
-                                QStringLiteral("%1 → %2 · tarifa %3")
-                                    .arg(nombreNodo(origen), nombreNodo(destino), Grafo::formatearPesos(tarifa)),
+                                QStringLiteral("%1 → %2 · tarifa estimada %3")
+                                    .arg(nombreNodo(origen), nombreNodo(destino), formatearPesos(tarifa)),
                                 taxi->getId(), origen);
                 break;
             }
@@ -460,6 +468,10 @@ void Simulacion::avanzarUnPaso(double dt)
     tiempoSimulado += dt;
     reloj.avanzar(dt);
     actualizarPeriodo(false);
+    if (grafo != nullptr)
+    {
+        grafo->disiparCongestion(dt);
+    }
 
     cuentaRegresivaPasajero -= dt;
     if (cuentaRegresivaPasajero <= 0.0)
@@ -488,7 +500,10 @@ void Simulacion::avanzarUnPaso(double dt)
     while (acumuladorMuestra >= 1.0)
     {
         acumuladorMuestra -= 1.0;
-        emit muestraGrafico(tiempoSimulado);
+        if (ventana != nullptr)
+        {
+            ventana->notificarMuestraGrafico(tiempoSimulado);
+        }
     }
 }
 
@@ -530,9 +545,12 @@ QString Simulacion::nombreNodo(int id) const
 }
 
 void Simulacion::registrarEvento(QString categoria, QString titulo, QString detalle,
-                                int idTaxi, int idNodo)
+                                 int idTaxi, int idNodo)
 {
-    emit eventoOcurrido(reloj.textoHora(), categoria, titulo, detalle, idTaxi, idNodo);
+    if (ventana != nullptr)
+    {
+        ventana->agregarEvento(reloj.textoHora(), categoria, titulo, detalle, idTaxi, idNodo);
+    }
 }
 
 void Simulacion::enTickReloj()
@@ -545,7 +563,7 @@ void Simulacion::enTickReloj()
     if (!pausada)
     {
         double totalDt = dtReal * velocidad;
-        int pasos = static_cast<int>(std::ceil(totalDt / 0.05));
+        int pasos = int(std::ceil(totalDt / 0.05));
         if (pasos < 1)
         {
             pasos = 1;
@@ -555,12 +573,16 @@ void Simulacion::enTickReloj()
             avanzarUnPaso(totalDt / pasos);
         }
     }
-    emit cuadroActualizado(dtReal);
+    if (ventana != nullptr)
+    {
+        ventana->notificarCuadroActualizado(dtReal);
+    }
 }
 
 Simulacion::Simulacion(QObject *parent) : QObject(parent)
 {
-    grafo = new Grafo(this);
+    grafo = new Grafo();
+    ventana = nullptr;
     for (int i = 0; i < 7; i++)
     {
         taxis[i] = nullptr;
@@ -590,6 +612,13 @@ Simulacion::Simulacion(QObject *parent) : QObject(parent)
 Simulacion::~Simulacion()
 {
     liberarTaxis();
+    delete grafo;
+    grafo = nullptr;
+}
+
+void Simulacion::setVentanaPrincipal(MainWindow *nuevaVentana)
+{
+    ventana = nuevaVentana;
 }
 
 Grafo *Simulacion::getGrafo() const
@@ -664,7 +693,10 @@ void Simulacion::setPausada(bool p)
         return;
     }
     pausada = p;
-    emit pausaCambiada(pausada);
+    if (ventana != nullptr)
+    {
+        ventana->actualizarBotonPausa(pausada);
+    }
 }
 
 void Simulacion::setVelocidad(double mult)
@@ -696,7 +728,10 @@ void Simulacion::reiniciar()
     {
         generarPasajero();
     }
-    emit reinicioCompletado();
+    if (ventana != nullptr)
+    {
+        ventana->notificarReinicioCompletado();
+    }
     registrarEvento(QStringLiteral("Sesión"), QStringLiteral("Simulación reiniciada"), {});
 }
 
@@ -709,5 +744,5 @@ double Simulacion::cotizarCarrera(int origen, int destino) const
     }
     Nodo *nodoDest = grafo->buscarNodo(destino);
     QString tipoDest = (nodoDest != nullptr) ? nodoDest->getTipo() : QStringLiteral("Normal");
-    return Grafo::calcularTarifa(r.getSaltos(), r.getTiempoPonderado(), tipoDest, reloj.periodoActual());
+    return calcularTarifa(r.getSaltos(), r.getTiempoPonderado(), tipoDest, reloj.periodoActual());
 }

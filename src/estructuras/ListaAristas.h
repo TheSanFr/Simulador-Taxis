@@ -12,10 +12,6 @@ private:
 
 public:
     ListaAristas();
-
-    ListaAristas(const ListaAristas &) = delete;
-    ListaAristas &operator=(const ListaAristas &) = delete;
-
     ~ListaAristas();
 
     void agregar(Arista *arista);

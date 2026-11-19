@@ -20,7 +20,7 @@ bool TaxiManual::esManual() const
 bool TaxiManual::agregarNodoARuta(int idNodo, Grafo *grafo)
 {
     int desde = nodoFinalDeRuta();
-    if (grafo == nullptr || cantidadRuta >= 100 || !grafo->existeAristaDirigida(desde, idNodo))
+    if (grafo == nullptr || getCantidadRuta() >= 100 || !grafo->existeAristaDirigida(desde, idNodo))
     {
         return false;
     }

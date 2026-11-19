@@ -15,7 +15,6 @@
 #include "simulacion/Simulacion.h"
 #include "taxis/Taxi.h"
 #include "taxis/TaxiManual.h"
-#include "interfaz/TransicionesPanel.h"
 #include "ui_mainwindow.h"
 
 #include <QAbstractButton>
@@ -24,12 +23,17 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QDialog>
+#include <QEasingCurve>
 #include <QFontMetrics>
+#include <QGraphicsDropShadowEffect>
+#include <QGraphicsOpacityEffect>
 #include <QHeaderView>
 #include <QInputDialog>
 #include <QItemSelectionModel>
+#include <QLabel>
 #include <QListWidget>
 #include <QMessageBox>
+#include <QPixmap>
 #include <QPushButton>
 #include <QScrollBar>
 #include <QSet>
@@ -43,7 +47,66 @@
 #include <QVector>
 #include <QWidget>
 
-#include <algorithm>
+EventoRegistro::EventoRegistro()
+    : idTaxi(-1), idNodo(-1), identidadNodo(0)
+{
+}
+
+EventoRegistro::EventoRegistro(QString hora, QString categoria, QString titulo, QString detalle,
+                               int idTaxi, int idNodo, int identidadNodo)
+    : hora(hora), categoria(categoria), titulo(titulo), detalle(detalle),
+      idTaxi(idTaxi), idNodo(idNodo), identidadNodo(identidadNodo)
+{
+}
+
+QString EventoRegistro::getHora() const
+{
+    return hora;
+}
+
+QString EventoRegistro::getCategoria() const
+{
+    return categoria;
+}
+
+QString EventoRegistro::getTitulo() const
+{
+    return titulo;
+}
+
+QString EventoRegistro::getDetalle() const
+{
+    return detalle;
+}
+
+int EventoRegistro::getIdTaxi() const
+{
+    return idTaxi;
+}
+
+int EventoRegistro::getIdNodo() const
+{
+    return idNodo;
+}
+
+int EventoRegistro::getIdentidadNodo() const
+{
+    return identidadNodo;
+}
+
+void MainWindow::aplicarSombraFlotante(QWidget *widget, int desenfoque,
+                                       int desplazamientoY, int opacidad)
+{
+    if (widget == nullptr)
+    {
+        return;
+    }
+    QGraphicsDropShadowEffect *sombra = new QGraphicsDropShadowEffect(widget);
+    sombra->setBlurRadius(desenfoque);
+    sombra->setOffset(0, desplazamientoY);
+    sombra->setColor(QColor(0, 0, 0, opacidad));
+    widget->setGraphicsEffect(sombra);
+}
 
 void MainWindow::asignarCelda(QTableWidget *tabla, int fila, int col, QString texto,
                               QColor color, Qt::Alignment alineacion)
@@ -114,21 +177,22 @@ void MainWindow::actualizarTextoAyudaEdicion()
             texto = QStringLiteral("Señala un destino para ver la calle. Haz clic para fijarlo.");
         else
         {
-            const Grafo::RevisionCalle revision = sim->getGrafo()->previsualizarCalle(
+            const RevisionCalle revision = sim->getGrafo()->previsualizarCalle(
                 nodoSeleccionadoEdicion, destinoEdicion, ui->comboSentidoCalle->currentIndex() == 0);
-            if (!revision.valida)
-                texto = revision.motivo;
+            if (!revision.esValida())
+                texto = revision.getMotivo();
             else
             {
                 puedeConstruir = true;
-                texto = revision.cruces.isEmpty()
-                    ? QStringLiteral("Peso inicial %1 · Enter para construir.").arg(revision.peso, 0, 'f', 1)
+                texto = revision.getCruces().isEmpty()
+                    ? QStringLiteral("Peso inicial %1 · Enter para construir.").arg(revision.getPeso(), 0, 'f', 1)
                     : QStringLiteral("Peso inicial %1 · cruces intermedios: %2 · Enter para construir.")
-                        .arg(revision.peso, 0, 'f', 1).arg(revision.cruces.size());
+                        .arg(revision.getPeso(), 0, 'f', 1).arg(revision.getCruces().size());
             }
-            for (const auto &tramo : revision.tramosAfectados)
+            const QVector<QPair<int, int>> &tramos = revision.getTramosAfectados();
+            for (int i = 0; i < tramos.size(); ++i)
             {
-                if (revision.valida && tramoEnUso(tramo.first, tramo.second))
+                if (revision.esValida() && tramoEnUso(tramos[i].first, tramos[i].second))
                 {
                     texto = avisoCalleOcupada();
                     puedeConstruir = false;
@@ -144,16 +208,19 @@ void MainWindow::actualizarTextoAyudaEdicion()
         texto = QStringLiteral("Selecciona el nodo que quieres eliminar junto con sus calles.");
     else if (modoEdicion == 5)
         texto = QStringLiteral("Selecciona los dos extremos de la calle para cambiar su peso.");
-    for (QShortcut *atajo : atajosConfirmar)
-        atajo->setEnabled(modoEdicion == 2 && ui->btnConstruirCalle->isEnabled());
-    ui->lblEditHint->setText(texto);
+    for (int i = 0; i < atajosConfirmar.size(); ++i)
+        atajosConfirmar[i]->setEnabled(modoEdicion == 2 && ui->btnConstruirCalle->isEnabled());
+    const int anchoDisponible = ui->lblEditHint->width() > 40 ? ui->lblEditHint->width() : 520;
+    ui->lblEditHint->setText(ui->lblEditHint->fontMetrics().elidedText(texto, Qt::ElideRight, anchoDisponible));
     ui->lblEditHint->setToolTip(texto);
 }
 
 void MainWindow::mostrarMensajeEstado(QString texto)
 {
     ui->statusbar->showMessage(texto, 8000);
-    ui->lblEditHint->setText(texto);
+    const int anchoDisponible = ui->lblEditHint->width() > 40 ? ui->lblEditHint->width() : 520;
+    ui->lblEditHint->setText(ui->lblEditHint->fontMetrics().elidedText(texto, Qt::ElideRight, anchoDisponible));
+    ui->lblEditHint->setToolTip(texto);
 }
 
 void MainWindow::configurarPanelGuia()
@@ -183,7 +250,7 @@ Selecciona una fila de la flota para ver ese recorrido en el mapa.</p>
 <h2>Tarifas y tráfico</h2>
 <ul>
 <li>La ciudad es un grafo dirigido y ponderado. Las flechas indican el sentido y el peso representa el costo del tramo.</li>
-<li>La tarifa se fija al recoger al pasajero. Se calcula con base de $4.600, $1.625 por salto y
+<li>El taxímetro avanza con los saltos y el tiempo ponderado recorridos durante la carrera. Se calcula con base de $4.600, $1.625 por salto y
 $1.625 por unidad de tiempo ponderado, con un mínimo de $8.100 antes de recargos.</li>
 <li>Aeropuerto: +$8.600. Terminal: +$2.400. Turismo: +$2.000 y mayor probabilidad de ser destino.</li>
 <li>El uso eleva el peso de la calle. En hora pico el peso efectivo se multiplica por 1,8.
@@ -250,6 +317,116 @@ void MainWindow::enModoEdicionCambiado(int indice)
     actualizarTextoAyudaEdicion();
 }
 
+void MainWindow::enModoConducirClicado()
+{
+    enModoEdicionCambiado(0);
+}
+
+void MainWindow::enModoEditarClicado()
+{
+    enModoEdicionCambiado(ui->comboEditMode->currentIndex() + 1);
+}
+
+void MainWindow::enHerramientaEdicionCambiada(int indice)
+{
+    if (ui->btnEditMode->isChecked())
+        enModoEdicionCambiado(indice + 1);
+}
+
+void MainWindow::enSentidoCalleCambiado(int indice)
+{
+    mapaWidget->setSentidoCalle(indice == 0);
+    actualizarTextoAyudaEdicion();
+}
+
+void MainWindow::enAtajoConfirmarCalle()
+{
+    if (modoEdicion == 2 && ui->btnConstruirCalle->isEnabled())
+        confirmarCalle();
+}
+
+void MainWindow::enFilaTaxiSeleccionada(int fila, int)
+{
+    if (fila < 0 || fila >= sim->getCantidadTaxis())
+        return;
+    const Taxi *taxi = sim->getTaxi(fila);
+    const int indice = ui->comboMapTaxi->findData(taxi->getId());
+    if (indice >= 0)
+        ui->comboMapTaxi->setCurrentIndex(indice);
+}
+
+void MainWindow::enTaxiMapaCambiado(int)
+{
+    temporizadorAviso.stop();
+    mapaWidget->setTaxiEnFoco(ui->comboMapTaxi->currentData().toInt());
+    actualizarEstadoSimulacion();
+}
+
+void MainWindow::enEventoListaSeleccionado(QListWidgetItem *item)
+{
+    if (item == nullptr)
+        return;
+    const int id = item->data(Qt::UserRole).toInt();
+    const int identidad = item->data(Qt::UserRole + 1).toInt();
+    if (identidad != 0 && identidad == sim->getGrafo()->getIdentidadNodo(id))
+        mapaWidget->resaltarNodo(id);
+    else
+        item->setToolTip(item->text());
+}
+
+void MainWindow::enPestanaCambiada(int indice)
+{
+    if (ui->tabs->currentWidget() != ui->tabPassengers)
+        limpiarUbicacionPasajero();
+    actualizarTablas();
+
+    QWidget *saliente = pestanaAnterior;
+    QWidget *entrante = ui->tabs->widget(indice);
+    int direccion = (indice >= indicePestanaAnterior) ? -1 : 1;
+    indicePestanaAnterior = indice;
+    pestanaAnterior = entrante;
+
+    if (capaTransicionPestana == nullptr || efectoOpacidadPestana == nullptr)
+        return;
+
+    animacionPestana.stop();
+    capaTransicionPestana->hide();
+
+    if (saliente != nullptr && entrante != nullptr && entrante->isVisible())
+    {
+        QPixmap captura = saliente->grab();
+        if (!captura.isNull())
+        {
+            geometriaBasePestana = entrante->geometry();
+            desplazamientoPestana = direccion * 14;
+            capaTransicionPestana->setPixmap(captura);
+            capaTransicionPestana->setGeometry(geometriaBasePestana);
+            efectoOpacidadPestana->setOpacity(1.0);
+            capaTransicionPestana->raise();
+            capaTransicionPestana->show();
+            animacionPestana.start();
+        }
+    }
+}
+
+void MainWindow::enPasoAnimacionPestana()
+{
+    if (capaTransicionPestana == nullptr || efectoOpacidadPestana == nullptr)
+        return;
+    const double avance = animacionPestana.currentValue().toDouble();
+    efectoOpacidadPestana->setOpacity(1.0 - avance);
+    const int dx = qRound(desplazamientoPestana * avance);
+    capaTransicionPestana->setGeometry(geometriaBasePestana.translated(dx, 0));
+}
+
+void MainWindow::enFinAnimacionPestana()
+{
+    if (capaTransicionPestana == nullptr)
+        return;
+    capaTransicionPestana->hide();
+    capaTransicionPestana->clear();
+}
+
 void MainWindow::limpiarSeleccionEdicion()
 {
     nodoSeleccionadoEdicion = -1;
@@ -293,41 +470,43 @@ void MainWindow::enEspacioVacioClicado(QPointF posMapa)
     }
 
     Grafo *grafo = sim->getGrafo();
-    const Grafo::RevisionNodo revision = grafo->previsualizarNodo(posMapa);
-    if (!revision.valida)
+    const RevisionNodo revision = grafo->previsualizarNodo(posMapa);
+    if (!revision.esValida())
     {
-        mostrarMensajeEstado(revision.motivo);
+        mostrarMensajeEstado(revision.getMotivo());
         return;
     }
-    for (const auto &tramo : revision.tramosAfectados)
+    const QVector<QPair<int, int>> &tramos = revision.getTramosAfectados();
+    for (int i = 0; i < tramos.size(); ++i)
     {
-        if (tramoEnUso(tramo.first, tramo.second))
+        if (tramoEnUso(tramos[i].first, tramos[i].second))
         {
             mostrarMensajeEstado(avisoCalleOcupada());
             return;
         }
     }
     DialogoNodo dialogo(this);
-    if (revision.divideCalle)
+    if (revision.getDivideCalle())
         dialogo.setWindowTitle(QStringLiteral("Crear cruce en la calle"));
     if (dialogo.exec() == QDialog::Accepted)
     {
         QString nombre = dialogo.getNombreNodo();
         if (nombre.isEmpty())
         {
-            nombre = revision.divideCalle ? QStringLiteral("Nuevo cruce") : QStringLiteral("Nuevo nodo");
+            nombre = revision.getDivideCalle() ? QStringLiteral("Nuevo cruce") : QStringLiteral("Nuevo nodo");
         }
         QString motivo;
-        const int id = grafo->crearNodoEditado(posMapa, nombre, dialogo.getTipoNodo(), revision.divideCalle, &motivo);
+        const int id = grafo->crearNodoEditado(posMapa, nombre, dialogo.getTipoNodo(), revision.getDivideCalle(), &motivo);
         if (id < 0)
         {
             mostrarMensajeEstado(motivo);
             return;
         }
+        actualizarResumenGrafo();
         mapaWidget->resaltarNodo(id);
-        const QString titulo = revision.divideCalle ? QStringLiteral("Cruce creado") : QStringLiteral("Nodo creado");
+        const QString titulo = revision.getDivideCalle() ? QStringLiteral("Cruce creado") : QStringLiteral("Nodo creado");
         registrarCambioMapa(titulo, nombre, id);
-        mostrarMensajeEstado(revision.divideCalle
+        mostrarMensajeEstado(revision.getDivideCalle()
             ? QStringLiteral("Cruce %1 conectado a la calle.").arg(nombre)
             : QStringLiteral("%1 está sin conectar. Usa Agregar calle.").arg(nombre));
     }
@@ -373,50 +552,61 @@ QString MainWindow::motivoNodoEnUso(int idNodo) const
     return {};
 }
 
-bool MainWindow::conservarViajesAlEliminar(int nodo, int extremoA, int extremoB) const
+bool MainWindow::esRutaAlcanzable(int inicio, int fin, bool excluir,
+                                  int nodoExcluido, int extremoA, int extremoB) const
 {
     const Grafo *grafo = sim->getGrafo();
-    const auto alcanzable = [&](int inicio, int fin, bool excluir) {
-        QVector<int> pendientes{inicio};
-        QSet<int> visitados{inicio};
-        for (int i = 0; i < pendientes.size(); ++i)
+    QVector<int> pendientes;
+    pendientes.append(inicio);
+    QSet<int> visitados;
+    visitados.insert(inicio);
+
+    for (int i = 0; i < pendientes.size(); ++i)
+    {
+        const int actual = pendientes[i];
+        if (actual == fin)
+            return true;
+        for (const ElementoArista *elemento = grafo->getAristas()->getPrimero();
+             elemento != nullptr; elemento = elemento->getSiguiente())
         {
-            const int actual = pendientes[i];
-            if (actual == fin)
-                return true;
-            for (const ElementoArista *elemento = grafo->getAristas()->getPrimero();
-                 elemento != nullptr; elemento = elemento->getSiguiente())
+            const Arista *arista = elemento->getArista();
+            if (arista->getOrigen() != actual)
+                continue;
+            const int siguiente = arista->getDestino();
+            const bool tramoExcluido = (actual == extremoA && siguiente == extremoB)
+                || (actual == extremoB && siguiente == extremoA);
+            if (excluir && (siguiente == nodoExcluido || tramoExcluido))
+                continue;
+            if (!visitados.contains(siguiente))
             {
-                const Arista *arista = elemento->getArista();
-                if (arista->getOrigen() != actual)
-                    continue;
-                const int siguiente = arista->getDestino();
-                const bool tramoExcluido = (actual == extremoA && siguiente == extremoB)
-                    || (actual == extremoB && siguiente == extremoA);
-                if (excluir && (siguiente == nodo || tramoExcluido))
-                    continue;
-                if (!visitados.contains(siguiente))
-                {
-                    visitados.insert(siguiente);
-                    pendientes.append(siguiente);
-                }
+                visitados.insert(siguiente);
+                pendientes.append(siguiente);
             }
         }
-        return false;
-    };
-    const auto seConserva = [&](int inicio, int fin) {
-        return !alcanzable(inicio, fin, false) || alcanzable(inicio, fin, true);
-    };
+    }
+    return false;
+}
+
+bool MainWindow::seConservaRuta(int inicio, int fin,
+                                int nodoExcluido, int extremoA, int extremoB) const
+{
+    return !esRutaAlcanzable(inicio, fin, false, nodoExcluido, extremoA, extremoB)
+        || esRutaAlcanzable(inicio, fin, true, nodoExcluido, extremoA, extremoB);
+}
+
+bool MainWindow::conservarViajesAlEliminar(int nodo, int extremoA, int extremoB) const
+{
     for (const Pasajero &pasajero : sim->getPasajerosEnEspera())
     {
-        if (!seConserva(pasajero.getOrigen(), pasajero.getDestino()))
+        if (!seConservaRuta(pasajero.getOrigen(), pasajero.getDestino(), nodo, extremoA, extremoB))
             return false;
     }
     for (int i = 0; i < sim->getCantidadTaxis(); ++i)
     {
         const Taxi *taxi = sim->getTaxi(i);
         const int partida = taxi->getEnMovimiento() ? taxi->getNodoSiguiente() : taxi->getNodoActual();
-        if (taxi->getLlevaPasajero() && !seConserva(partida, taxi->getDestinoPasajeroABordo()))
+        if (taxi->getLlevaPasajero()
+            && !seConservaRuta(partida, taxi->getDestinoPasajeroABordo(), nodo, extremoA, extremoB))
             return false;
     }
     return true;
@@ -430,15 +620,16 @@ void MainWindow::confirmarCalle()
     const int origen = nodoSeleccionadoEdicion;
     const int destino = destinoEdicion;
     const bool doble = ui->comboSentidoCalle->currentIndex() == 0;
-    const Grafo::RevisionCalle revision = grafo->previsualizarCalle(origen, destino, doble);
-    if (!revision.valida)
+    const RevisionCalle revision = grafo->previsualizarCalle(origen, destino, doble);
+    if (!revision.esValida())
     {
-        mostrarMensajeEstado(revision.motivo);
+        mostrarMensajeEstado(revision.getMotivo());
         return;
     }
-    for (const auto &tramo : revision.tramosAfectados)
+    const QVector<QPair<int, int>> &tramos = revision.getTramosAfectados();
+    for (int i = 0; i < tramos.size(); ++i)
     {
-        if (tramoEnUso(tramo.first, tramo.second))
+        if (tramoEnUso(tramos[i].first, tramos[i].second))
         {
             mostrarMensajeEstado(avisoCalleOcupada());
             return;
@@ -453,12 +644,13 @@ void MainWindow::confirmarCalle()
         mostrarMensajeEstado(motivo);
         return;
     }
+    actualizarResumenGrafo();
     limpiarSeleccionEdicion();
     actualizarTextoAyudaEdicion();
     mapaWidget->resaltarCalle(origen, destino);
-    QString detalle = QStringLiteral("%1 · peso %2").arg(enlace).arg(revision.peso, 0, 'f', 1);
-    if (!revision.cruces.isEmpty())
-        detalle += QStringLiteral(" · cruces intermedios: %1").arg(revision.cruces.size());
+    QString detalle = QStringLiteral("%1 · peso %2").arg(enlace).arg(revision.getPeso(), 0, 'f', 1);
+    if (!revision.getCruces().isEmpty())
+        detalle += QStringLiteral(" · cruces intermedios: %1").arg(revision.getCruces().size());
     registrarCambioMapa(QStringLiteral("Calle creada"), detalle, destino);
     mostrarMensajeEstado(QStringLiteral("Calle creada · %1").arg(enlace));
 }
@@ -507,6 +699,7 @@ void MainWindow::enNodoClicado(int idNodo)
         {
             if (g->eliminarNodo(idNodo))
             {
+                actualizarResumenGrafo();
                 registrarCambioMapa(QStringLiteral("Nodo eliminado"), nombre, -1);
                 mostrarMensajeEstado(QStringLiteral("Nodo \"%1\" eliminado.").arg(nombre));
             }
@@ -558,7 +751,10 @@ void MainWindow::enNodoClicado(int idNodo)
         }
         bool ok = g->eliminarCalle(origen, destino);
         if (ok)
+        {
+            actualizarResumenGrafo();
             registrarCambioMapa(QStringLiteral("Calle eliminada"), QStringLiteral("%1 – %2").arg(nombreA, nombreB), origen);
+        }
         mostrarMensajeEstado(ok ? QStringLiteral("Calle eliminada entre \"%1\" y \"%2\".").arg(nombreA, nombreB)
                                 : QStringLiteral("No existe calle entre \"%1\" y \"%2\".").arg(nombreA, nombreB));
     }
@@ -591,7 +787,17 @@ void MainWindow::enNodoClicado(int idNodo)
             }
         }
     }
+}
 
+void MainWindow::enNodoEnFocoCambiado(int idNodo)
+{
+    const Nodo *nodo = sim->getGrafo()->buscarNodo(idNodo);
+    const QString detalle = nodo != nullptr
+        ? QStringLiteral("Nodo %1 · %2").arg(idNodo).arg(nodo->getNombre())
+        : QString();
+    ui->lblNodeFocus->setText(ui->lblNodeFocus->fontMetrics().elidedText(
+        detalle, Qt::ElideRight, ui->lblNodeFocus->width()));
+    ui->lblNodeFocus->setToolTip(detalle);
 }
 
 void MainWindow::registrarCambioMapa(QString titulo, QString detalle, int idNodo)
@@ -599,34 +805,34 @@ void MainWindow::registrarCambioMapa(QString titulo, QString detalle, int idNodo
     agregarEvento(sim->getReloj().textoHora(), QStringLiteral("Mapa"), titulo, detalle, -1, idNodo);
 }
 
-bool MainWindow::mostrarEvento(const Evento &evento) const
+bool MainWindow::mostrarEvento(const EventoRegistro &evento) const
 {
     const QString filtro = ui->comboFiltroEventos->currentData().toString();
     if (filtro == QStringLiteral("manual"))
-        return evento.idTaxi == sim->getTaxiManual()->getId();
-    return filtro.isEmpty() || evento.categoria == filtro;
+        return evento.getIdTaxi() == sim->getTaxiManual()->getId();
+    return filtro.isEmpty() || evento.getCategoria() == filtro;
 }
 
-void MainWindow::insertarEvento(const Evento &evento)
+void MainWindow::insertarEvento(const EventoRegistro &evento)
 {
-    QString texto = QStringLiteral("%1  ·  %2\n%3").arg(evento.hora, evento.categoria, evento.titulo);
-    if (!evento.detalle.isEmpty())
-        texto += QLatin1Char('\n') + evento.detalle;
-    auto *item = new QListWidgetItem(texto, ui->listaEventos);
-    item->setData(Qt::UserRole, evento.idNodo);
-    item->setData(Qt::UserRole + 1, QVariant::fromValue(evento.identidadNodo));
-    const bool vinculoActivo = evento.identidadNodo != 0
-        && evento.identidadNodo == sim->getGrafo()->getIdentidadNodo(evento.idNodo);
+    QString texto = QStringLiteral("%1  ·  %2\n%3").arg(evento.getHora(), evento.getCategoria(), evento.getTitulo());
+    if (!evento.getDetalle().isEmpty())
+        texto += QLatin1Char('\n') + evento.getDetalle();
+    QListWidgetItem *item = new QListWidgetItem(texto, ui->listaEventos);
+    item->setData(Qt::UserRole, evento.getIdNodo());
+    item->setData(Qt::UserRole + 1, evento.getIdentidadNodo());
+    const bool vinculoActivo = evento.getIdentidadNodo() != 0
+        && evento.getIdentidadNodo() == sim->getGrafo()->getIdentidadNodo(evento.getIdNodo());
     item->setToolTip(vinculoActivo ? QStringLiteral("Pulsa para localizar el cruce en el mapa.") : texto);
 }
 
 void MainWindow::actualizarEventos()
 {
     ui->listaEventos->clear();
-    for (const Evento &evento : eventos)
+    for (int i = 0; i < eventos.size(); ++i)
     {
-        if (mostrarEvento(evento))
-            insertarEvento(evento);
+        if (mostrarEvento(eventos[i]))
+            insertarEvento(eventos[i]);
     }
     const bool hayEventos = ui->listaEventos->count() > 0;
     ui->lblEventosVacio->setVisible(!hayEventos);
@@ -635,10 +841,11 @@ void MainWindow::actualizarEventos()
         ui->listaEventos->scrollToBottom();
 }
 
-void MainWindow::agregarEvento(QString hora, QString categoria, QString titulo, QString detalle, int idTaxi, int idNodo)
+void MainWindow::agregarEvento(QString hora, QString categoria, QString titulo,
+                               QString detalle, int idTaxi, int idNodo)
 {
-    const Evento evento{hora, categoria, titulo, detalle, idTaxi, idNodo,
-                        sim->getGrafo()->getIdentidadNodo(idNodo)};
+    const EventoRegistro evento(hora, categoria, titulo, detalle, idTaxi, idNodo,
+                                sim->getGrafo()->getIdentidadNodo(idNodo));
     eventos.append(evento);
     if (!mostrarEvento(evento))
         return;
@@ -671,6 +878,9 @@ void MainWindow::configurarTablas()
     t->setWordWrap(false);
     t->horizontalHeader()->setSectionResizeMode(QHeaderView::Stretch);
     t->horizontalHeader()->setSectionResizeMode(0, QHeaderView::ResizeToContents);
+    t->horizontalHeader()->setSectionResizeMode(2, QHeaderView::ResizeToContents);
+    t->horizontalHeader()->setSectionResizeMode(3, QHeaderView::ResizeToContents);
+    t->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
     actualizarTablas();
 }
 
@@ -684,11 +894,12 @@ void MainWindow::actualizarResumenGrafo()
 
 void MainWindow::actualizarEstadoSimulacion()
 {
+    actualizarResumenGrafo();
     const RelojSimulacion &reloj = sim->getReloj();
     const QString periodo = reloj.periodoActual();
     const QString estado = periodo == "HoraPico" ? QStringLiteral("Hora pico ×1.8")
                          : periodo == "Nocturno" ? QStringLiteral("Nocturno +$2.000")
-                                                : QStringLiteral("Tráfico normal");
+                                                 : QStringLiteral("Tráfico normal");
     ui->lblGraphClock->setText(reloj.textoHora());
     const QString siguiente = reloj.textoProximoPeriodo();
     const QString resumen = QStringLiteral("Día %1 · %2").arg(reloj.getDia()).arg(estado);
@@ -701,14 +912,13 @@ void MainWindow::actualizarEstadoSimulacion()
     const int viajes = taxi->getViajes();
     ui->lblManualTrips->setText(viajes == 1 ? QStringLiteral("1 viaje")
                                            : QStringLiteral("%1 viajes").arg(viajes));
-    ui->lblManualIncome->setText(Grafo::formatearPesos(taxi->getIngresos()));
+    ui->lblManualIncome->setText(formatearPesos(taxi->getIngresos()));
     if (taxi->getLlevaPasajero())
     {
         const Nodo *destino = sim->getGrafo()->buscarNodo(taxi->getDestinoPasajeroABordo());
         ui->lblManualState->setText(QStringLiteral("A bordo"));
         ui->lblManualDetail->setText(destino != nullptr
-            ? QStringLiteral("%1 · tarifa %2").arg(destino->getNombre(),
-                Grafo::formatearPesos(taxi->getTarifaPasajeroABordo()))
+            ? QStringLiteral("Destino · %1").arg(destino->getNombre())
             : QStringLiteral("Destino fuera del mapa"));
     }
     else if (temporizadorAviso.isActive() && llegadaManualReciente)
@@ -748,11 +958,22 @@ void MainWindow::actualizarTablas()
         asignarCelda(t, i, 0, QStringLiteral("● ") + tx->getNombre(), tx->getColor(), Qt::AlignLeft);
         asignarCelda(t, i, 1, tx->nombreAlgoritmo(), QColor("#dbe3ef"), Qt::AlignLeft);
         asignarCelda(t, i, 2, QString::number(tx->getViajes()), QColor("#dbe3ef"), Qt::AlignRight);
-        asignarCelda(t, i, 3, Grafo::formatearPesos(tx->getIngresos()), QColor("#89e3be"), Qt::AlignRight);
+        asignarCelda(t, i, 3, formatearPesos(tx->getIngresos()), QColor("#89e3be"), Qt::AlignRight);
         asignarCelda(t, i, 4,
                      tx->esManual() ? QStringLiteral("-") : QString::number(tx->getNodosExplorados()),
                      QColor("#dbe3ef"), Qt::AlignRight);
     }
+}
+
+bool MainWindow::pasajeroSigueEnEspera(int idPasajero) const
+{
+    const QVector<Pasajero> &lista = sim->getPasajerosEnEspera();
+    for (int i = 0; i < lista.size(); ++i)
+    {
+        if (lista[i].getId() == idPasajero)
+            return true;
+    }
+    return false;
 }
 
 void MainWindow::actualizarEspera()
@@ -777,12 +998,21 @@ void MainWindow::actualizarEspera()
 
     const QVector<Pasajero> &lista = sim->getPasajerosEnEspera();
     const Grafo *g = sim->getGrafo();
-    const quint64 revisionPesos = g->getRevisionPesos();
+    const int revisionPesos = g->getRevisionPesos();
     const QString periodo = sim->getReloj().periodoActual();
     const bool mismasTarifas = revisionPesosCotizados == revisionPesos && periodoCotizado == periodo;
-    const bool mismosPasajeros = std::equal(lista.cbegin(), lista.cend(),
-        pasajerosEnTabla.cbegin(), pasajerosEnTabla.cend(),
-        [](const Pasajero &pasajero, int id) { return pasajero.getId() == id; });
+    bool mismosPasajeros = (lista.size() == pasajerosEnTabla.size());
+    if (mismosPasajeros)
+    {
+        for (int i = 0; i < lista.size(); ++i)
+        {
+            if (lista[i].getId() != pasajerosEnTabla[i])
+            {
+                mismosPasajeros = false;
+                break;
+            }
+        }
+    }
     if (mismosPasajeros && mismasTarifas)
         return;
 
@@ -795,14 +1025,16 @@ void MainWindow::actualizarEspera()
         tp->selectionModel()->clear();
         tp->setRowCount(lista.size());
         pasajerosEnTabla.resize(lista.size());
-        const auto sigueEnEspera = [&lista](int id) {
-            return std::any_of(lista.cbegin(), lista.cend(),
-                [id](const Pasajero &p) { return p.getId() == id; });
-        };
-        tarifasVisibles.removeIf([&sigueEnEspera](auto tarifa) {
-            return !sigueEnEspera(tarifa.key());
-        });
-        if (pasajeroUbicado >= 0 && !sigueEnEspera(pasajeroUbicado))
+
+        const QList<int> claves = tarifasVisibles.keys();
+        for (int i = 0; i < claves.size(); ++i)
+        {
+            if (!pasajeroSigueEnEspera(claves[i]))
+            {
+                tarifasVisibles.remove(claves[i]);
+            }
+        }
+        if (pasajeroUbicado >= 0 && !pasajeroSigueEnEspera(pasajeroUbicado))
             limpiarUbicacionPasajero();
     }
     ui->lblEsperaVacia->setVisible(lista.isEmpty());
@@ -829,14 +1061,13 @@ void MainWindow::actualizarEspera()
             tp->item(i, 0)->setToolTip(nombreOrigen);
             tp->item(i, 1)->setToolTip(nombreDestino);
         }
-        const auto tarifa = mismasTarifas ? tarifasVisibles.constFind(id) : tarifasVisibles.cend();
         QString importe;
-        if (tarifa != tarifasVisibles.cend())
-            importe = tarifa.value();
+        if (mismasTarifas && tarifasVisibles.contains(id))
+            importe = tarifasVisibles.value(id);
         else
         {
             const double tarifaEstimada = sim->cotizarCarrera(p.getOrigen(), p.getDestino());
-            importe = tarifaEstimada > 0.0 ? Grafo::formatearPesos(tarifaEstimada)
+            importe = tarifaEstimada > 0.0 ? formatearPesos(tarifaEstimada)
                                            : QStringLiteral("Sin ruta");
             tarifasVisibles.insert(id, importe);
         }
@@ -854,12 +1085,20 @@ void MainWindow::ubicarPasajero(int fila)
 
     const int id = recogida->data(Qt::UserRole).toInt();
     const QVector<Pasajero> &lista = sim->getPasajerosEnEspera();
-    const auto pasajero = std::find_if(lista.cbegin(), lista.cend(),
-        [id](const Pasajero &p) { return p.getId() == id; });
-    if (pasajero != lista.cend())
+    int indiceEncontrado = -1;
+    for (int i = 0; i < lista.size(); ++i)
+    {
+        if (lista[i].getId() == id)
+        {
+            indiceEncontrado = i;
+            break;
+        }
+    }
+    if (indiceEncontrado >= 0)
     {
         pasajeroUbicado = id;
-        mapaWidget->resaltarRecorridoPasajero(pasajero->getOrigen(), pasajero->getDestino());
+        mapaWidget->resaltarRecorridoPasajero(lista[indiceEncontrado].getOrigen(),
+                                              lista[indiceEncontrado].getDestino());
     }
     else
         actualizarEspera();
@@ -872,6 +1111,78 @@ void MainWindow::limpiarUbicacionPasajero()
 
     pasajeroUbicado = -1;
     mapaWidget->ocultarRecorridoPasajero();
+}
+
+void MainWindow::notificarCuadroActualizado(double dtReal)
+{
+    if (mapaWidget != nullptr)
+        mapaWidget->enCuadro(dtReal);
+    if (barrasWidget != nullptr)
+        barrasWidget->enCuadro(dtReal);
+}
+
+void MainWindow::notificarMuestraGrafico(double segundosSimulados)
+{
+    if (graficoWidget != nullptr)
+        graficoWidget->enMuestra(segundosSimulados);
+}
+
+void MainWindow::notificarPasajeroRecogido(int idTaxi, int origen, int destino)
+{
+    if (mapaWidget != nullptr)
+        mapaWidget->enPasajeroRecogido(idTaxi, origen, destino);
+
+    if (pasajeroUbicado >= 0 && !pasajeroSigueEnEspera(pasajeroUbicado))
+        limpiarUbicacionPasajero();
+    if (modoEdicion != 0 || taxiConAviso()->getId() != idTaxi)
+        return;
+    const Nodo *desde = sim->getGrafo()->buscarNodo(origen);
+    const Nodo *hasta = sim->getGrafo()->buscarNodo(destino);
+    if (desde == nullptr || hasta == nullptr)
+        return;
+    llegadaManualReciente = false;
+    avisoTrayecto = QStringLiteral("Recogida en %1 · destino: %2").arg(desde->getNombre(), hasta->getNombre());
+    temporizadorAviso.start(4200);
+    actualizarEstadoSimulacion();
+}
+
+void MainWindow::notificarCarreraCompletada(int idTaxi, QPointF posMapa, double tarifa, QColor color)
+{
+    if (mapaWidget != nullptr)
+        mapaWidget->enCarreraCompletada(idTaxi, posMapa, tarifa, color);
+
+    const Taxi *taxi = taxiConAviso();
+    if (modoEdicion != 0 || taxi->getId() != idTaxi)
+        return;
+    const Nodo *destino = sim->getGrafo()->buscarNodo(taxi->getNodoActual());
+    if (destino == nullptr)
+        return;
+    llegadaManualReciente = taxi->esManual();
+    avisoTrayecto = QStringLiteral("Llegada a %1 · +%2").arg(destino->getNombre(), formatearPesos(tarifa));
+    temporizadorAviso.start(4200);
+    actualizarEstadoSimulacion();
+}
+
+void MainWindow::notificarReinicioCompletado()
+{
+    if (mapaWidget != nullptr)
+        mapaWidget->enReinicioSimulacion();
+    if (barrasWidget != nullptr)
+        barrasWidget->reiniciarBarras();
+    if (graficoWidget != nullptr)
+        graficoWidget->reconstruirSeries();
+
+    temporizadorAviso.stop();
+    limpiarSeleccionEdicion();
+    limpiarUbicacionPasajero();
+    eventos.clear();
+    actualizarEventos();
+    ui->tablePassengers->selectionModel()->clear();
+    ui->tablePassengers->setRowCount(0);
+    pasajerosEnTabla.clear();
+    tarifasVisibles.clear();
+    actualizarTextoAyudaEdicion();
+    configurarTablas();
 }
 
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
@@ -900,19 +1211,34 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
             ui->comboMapTaxi->addItem(taxi->getNombre(), taxi->getId());
     }
     ui->lblEditHint->setTextFormat(Qt::PlainText);
+    ui->lblEditHint->setWordWrap(false);
+    ui->layoutEdit->setContentsMargins(0, 1, 0, 5);
     ui->lblManualDetail->setTextFormat(Qt::PlainText);
     ui->lblNodeFocus->setTextFormat(Qt::PlainText);
     ui->lblNodeFocus->setAlignment(Qt::AlignRight | Qt::AlignVCenter);
     ui->layoutGraphLegend->setStretch(ui->layoutGraphLegend->indexOf(ui->lblNodeFocus), 1);
     ui->layoutEdit->setStretch(ui->layoutEdit->indexOf(ui->lblEditHint), 1);
     ui->comboTimeMode->setAccessibleName(QStringLiteral("Período de tráfico"));
-    auto *modosMapa = new QButtonGroup(this);
+    QButtonGroup *modosMapa = new QButtonGroup(this);
     modosMapa->addButton(ui->btnDriveMode);
     modosMapa->addButton(ui->btnEditMode);
     ui->btnDriveMode->setChecked(true);
 
+    aplicarSombraFlotante(ui->btnPause, 13, 2, 115);
+    aplicarSombraFlotante(ui->btnReset, 11, 2, 100);
+    aplicarSombraFlotante(ui->comboSpeed, 11, 2, 100);
+    aplicarSombraFlotante(ui->comboTimeMode, 11, 2, 100);
+    aplicarSombraFlotante(ui->btnDriveMode, 11, 2, 100);
+    aplicarSombraFlotante(ui->btnEditMode, 11, 2, 100);
+    aplicarSombraFlotante(ui->comboEditMode, 11, 2, 100);
+    aplicarSombraFlotante(ui->comboSentidoCalle, 11, 2, 100);
+    aplicarSombraFlotante(ui->btnConstruirCalle, 11, 2, 105);
+    aplicarSombraFlotante(ui->comboMapTaxi, 11, 2, 100);
+    aplicarSombraFlotante(ui->comboFiltroEventos, 10, 2, 95);
+
     mapaWidget = new MapaWidget(ui->mapHost);
     mapaWidget->setFocusPolicy(Qt::ClickFocus);
+    mapaWidget->setVentanaPrincipal(this);
     ui->layoutMapHost->insertWidget(ui->layoutMapHost->indexOf(ui->graphLegend), mapaWidget, 1);
     barrasWidget = new BarrasGananciasWidget(ui->barsHost);
     ui->barsHost->layout()->addWidget(barrasWidget);
@@ -924,6 +1250,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     mapaWidget->setTaxiEnFoco(ui->comboMapTaxi->currentData().toInt());
     barrasWidget->setSimulacion(sim);
     graficoWidget->setSimulacion(sim);
+    sim->setVentanaPrincipal(this);
 
     ui->splitter->setStretchFactor(0, 1);
     ui->splitter->setStretchFactor(1, 0);
@@ -935,142 +1262,89 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent)
     enModoEdicionCambiado(0);
     actualizarResumenGrafo();
 
-    connect(sim->getGrafo(), &Grafo::grafoModificado, this, &MainWindow::actualizarResumenGrafo);
-    connect(mapaWidget, &MapaWidget::nodoEnFocoCambiado, this, [this](int id) {
-        const Nodo *nodo = sim->getGrafo()->buscarNodo(id);
-        const QString detalle = nodo != nullptr
-            ? QStringLiteral("Nodo %1 · %2").arg(id).arg(nodo->getNombre())
-            : QString();
-        ui->lblNodeFocus->setText(ui->lblNodeFocus->fontMetrics().elidedText(
-            detalle, Qt::ElideRight, ui->lblNodeFocus->width()));
-        ui->lblNodeFocus->setToolTip(detalle);
-    });
+    pestanaAnterior = ui->tabs->currentWidget();
+    indicePestanaAnterior = ui->tabs->currentIndex();
+    capaTransicionPestana = new QLabel(ui->tabs->currentWidget()->parentWidget());
+    capaTransicionPestana->setAttribute(Qt::WA_TransparentForMouseEvents);
+    capaTransicionPestana->hide();
+    efectoOpacidadPestana = new QGraphicsOpacityEffect(capaTransicionPestana);
+    capaTransicionPestana->setGraphicsEffect(efectoOpacidadPestana);
+
+    animacionPestana.setStartValue(0.0);
+    animacionPestana.setEndValue(1.0);
+    animacionPestana.setDuration(150);
+    animacionPestana.setEasingCurve(QEasingCurve::OutCubic);
+    connect(&animacionPestana, &QVariantAnimation::valueChanged, this, &MainWindow::enPasoAnimacionPestana);
+    connect(&animacionPestana, &QVariantAnimation::finished, this, &MainWindow::enFinAnimacionPestana);
+
     connect(ui->btnPause, &QPushButton::toggled, this, &MainWindow::enPausaCambiada);
     connect(ui->btnReset, &QPushButton::clicked, this, &MainWindow::enReiniciarClicado);
     connect(ui->comboSpeed, &QComboBox::currentIndexChanged, this, &MainWindow::enVelocidadCambiada);
     connect(ui->comboTimeMode, &QComboBox::currentIndexChanged, this, &MainWindow::enModoTiempoCambiado);
-    connect(ui->btnDriveMode, &QPushButton::clicked, this, [this] { enModoEdicionCambiado(0); });
-    connect(ui->btnEditMode, &QPushButton::clicked, this, [this] {
-        enModoEdicionCambiado(ui->comboEditMode->currentIndex() + 1);
-    });
-    connect(ui->comboEditMode, &QComboBox::currentIndexChanged, this, [this](int indice) {
-        if (ui->btnEditMode->isChecked())
-            enModoEdicionCambiado(indice + 1);
-    });
-    connect(ui->comboSentidoCalle, &QComboBox::currentIndexChanged, this, [this](int indice) {
-        mapaWidget->setSentidoCalle(indice == 0);
-        actualizarTextoAyudaEdicion();
-    });
+    connect(ui->btnDriveMode, &QPushButton::clicked, this, &MainWindow::enModoConducirClicado);
+    connect(ui->btnEditMode, &QPushButton::clicked, this, &MainWindow::enModoEditarClicado);
+    connect(ui->comboEditMode, &QComboBox::currentIndexChanged, this, &MainWindow::enHerramientaEdicionCambiada);
+    connect(ui->comboSentidoCalle, &QComboBox::currentIndexChanged, this, &MainWindow::enSentidoCalleCambiado);
     connect(ui->btnConstruirCalle, &QPushButton::clicked, this, &MainWindow::confirmarCalle);
-    for (const Qt::Key tecla : {Qt::Key_Return, Qt::Key_Enter})
+
+    const Qt::Key teclasConfirmar[2] = {Qt::Key_Return, Qt::Key_Enter};
+    for (int i = 0; i < 2; ++i)
     {
-        auto *confirmar = new QShortcut(QKeySequence(tecla), ui->mapHost);
+        QShortcut *confirmar = new QShortcut(QKeySequence(teclasConfirmar[i]), ui->mapHost);
         confirmar->setContext(Qt::WidgetWithChildrenShortcut);
         confirmar->setEnabled(false);
         atajosConfirmar.append(confirmar);
-        connect(confirmar, &QShortcut::activated, this, [this] {
-            if (modoEdicion == 2 && ui->btnConstruirCalle->isEnabled())
-                confirmarCalle();
-        });
+        connect(confirmar, &QShortcut::activated, this, &MainWindow::enAtajoConfirmarCalle);
     }
-    auto *cancelar = new QShortcut(QKeySequence(Qt::Key_Escape), ui->centralwidget);
+    QShortcut *cancelar = new QShortcut(QKeySequence(Qt::Key_Escape), ui->centralwidget);
     cancelar->setContext(Qt::WidgetWithChildrenShortcut);
     connect(cancelar, &QShortcut::activated, this, &MainWindow::enCancelarClicado);
     connect(ui->chkWeights, &QCheckBox::toggled, this, &MainWindow::enMostrarPesosCambiado);
-    const auto enfocarFila = [this](int fila, int) {
-        if (fila < 0 || fila >= sim->getCantidadTaxis())
-            return;
-        const Taxi *taxi = sim->getTaxi(fila);
-        const int indice = ui->comboMapTaxi->findData(taxi->getId());
-        if (indice >= 0)
-            ui->comboMapTaxi->setCurrentIndex(indice);
-    };
-    connect(ui->tableTaxis, &QTableWidget::cellClicked, this, enfocarFila);
-    connect(ui->tableTaxis, &QTableWidget::cellActivated, this, enfocarFila);
+    connect(ui->tableTaxis, &QTableWidget::cellClicked, this, &MainWindow::enFilaTaxiSeleccionada);
+    connect(ui->tableTaxis, &QTableWidget::cellActivated, this, &MainWindow::enFilaTaxiSeleccionada);
     connect(ui->tablePassengers, &QTableWidget::cellClicked, this, &MainWindow::ubicarPasajero);
     connect(ui->tablePassengers, &QTableWidget::cellActivated, this, &MainWindow::ubicarPasajero);
-    connect(ui->comboMapTaxi, &QComboBox::currentIndexChanged, this, [this] {
-        temporizadorAviso.stop();
-        mapaWidget->setTaxiEnFoco(ui->comboMapTaxi->currentData().toInt());
-        actualizarEstadoSimulacion();
-    });
+    connect(ui->comboMapTaxi, &QComboBox::currentIndexChanged, this, &MainWindow::enTaxiMapaCambiado);
 
-    connect(mapaWidget, &MapaWidget::nodoClicado, this, &MainWindow::enNodoClicado);
-    connect(mapaWidget, &MapaWidget::espacioVacioClicado, this, &MainWindow::enEspacioVacioClicado);
-    connect(mapaWidget, &MapaWidget::cancelarSolicitado, this, &MainWindow::enCancelarClicado);
-
-    connect(sim, &Simulacion::eventoOcurrido, this, &MainWindow::agregarEvento);
     connect(ui->comboFiltroEventos, &QComboBox::currentIndexChanged, this, &MainWindow::actualizarEventos);
-    const auto ubicarEvento = [this](QListWidgetItem *item) {
-        const int id = item->data(Qt::UserRole).toInt();
-        const quint64 identidad = item->data(Qt::UserRole + 1).toULongLong();
-        if (identidad != 0 && identidad == sim->getGrafo()->getIdentidadNodo(id))
-            mapaWidget->resaltarNodo(id);
-        else
-            item->setToolTip(item->text());
-    };
-    connect(ui->listaEventos, &QListWidget::itemClicked, this, ubicarEvento);
-    connect(ui->listaEventos, &QListWidget::itemActivated, this, ubicarEvento);
+    connect(ui->listaEventos, &QListWidget::itemClicked, this, &MainWindow::enEventoListaSeleccionado);
+    connect(ui->listaEventos, &QListWidget::itemActivated, this, &MainWindow::enEventoListaSeleccionado);
+
     temporizadorAviso.setSingleShot(true);
     connect(&temporizadorAviso, &QTimer::timeout, this, &MainWindow::actualizarEstadoSimulacion);
-    connect(sim, &Simulacion::pasajeroRecogido, this, [this](int idTaxi, int origen, int destino) {
-        const QVector<Pasajero> &lista = sim->getPasajerosEnEspera();
-        if (pasajeroUbicado >= 0 && std::none_of(lista.cbegin(), lista.cend(),
-            [this](const Pasajero &p) { return p.getId() == pasajeroUbicado; }))
-            limpiarUbicacionPasajero();
-        if (modoEdicion != 0 || taxiConAviso()->getId() != idTaxi)
-            return;
-        const Nodo *desde = sim->getGrafo()->buscarNodo(origen);
-        const Nodo *hasta = sim->getGrafo()->buscarNodo(destino);
-        if (desde == nullptr || hasta == nullptr)
-            return;
-        llegadaManualReciente = false;
-        avisoTrayecto = QStringLiteral("Recogida en %1 · destino: %2").arg(desde->getNombre(), hasta->getNombre());
-        temporizadorAviso.start(4200);
-        actualizarEstadoSimulacion();
-    });
-    connect(sim, &Simulacion::carreraCompletada, this, [this](int idTaxi, QPointF, double tarifa, QColor) {
-        const Taxi *taxi = taxiConAviso();
-        if (modoEdicion != 0 || taxi->getId() != idTaxi)
-            return;
-        const Nodo *destino = sim->getGrafo()->buscarNodo(taxi->getNodoActual());
-        if (destino == nullptr)
-            return;
-        llegadaManualReciente = taxi->esManual();
-        avisoTrayecto = QStringLiteral("Llegada a %1 · +%2").arg(destino->getNombre(), Grafo::formatearPesos(tarifa));
-        temporizadorAviso.start(4200);
-        actualizarEstadoSimulacion();
-    });
-    connect(sim, &Simulacion::reinicioCompletado, this, [this] {
-        temporizadorAviso.stop();
-        limpiarSeleccionEdicion();
-        limpiarUbicacionPasajero();
-        eventos.clear();
-        actualizarEventos();
-        ui->tablePassengers->selectionModel()->clear();
-        ui->tablePassengers->setRowCount(0);
-        pasajerosEnTabla.clear();
-        tarifasVisibles.clear();
-        actualizarTextoAyudaEdicion();
-    });
-    connect(sim, &Simulacion::reinicioCompletado, this, &MainWindow::configurarTablas);
-    connect(sim, &Simulacion::pausaCambiada, this, &MainWindow::actualizarBotonPausa);
+
+    temporizadorResalteIngreso.setSingleShot(true);
+    temporizadorResalteIngreso.setInterval(650);
+    connect(&temporizadorResalteIngreso, &QTimer::timeout, this, &MainWindow::restaurarEstiloIngresoManual);
 
     temporizadorTablas.setInterval(250);
     connect(&temporizadorTablas, &QTimer::timeout, this, &MainWindow::actualizarTablas);
     temporizadorTablas.start();
-    connect(ui->tabs, &QTabWidget::currentChanged, this, [this] {
-        if (ui->tabs->currentWidget() != ui->tabPassengers)
-            limpiarUbicacionPasajero();
-        actualizarTablas();
-    });
-    new TransicionesPanel(ui->tabs);
+    connect(ui->tabs, &QTabWidget::currentChanged, this, &MainWindow::enPestanaCambiada);
 
     sim->iniciar();
 }
 
+void MainWindow::resaltarIngresoManual()
+{
+    if (ui->lblManualIncome == nullptr)
+        return;
+    ui->lblManualIncome->setStyleSheet(QStringLiteral("color: #ffd60a; font-weight: bold; font-size: 19px;"));
+    temporizadorResalteIngreso.start(650);
+}
+
+void MainWindow::restaurarEstiloIngresoManual()
+{
+    if (ui->lblManualIncome != nullptr)
+        ui->lblManualIncome->setStyleSheet(QString());
+}
+
 MainWindow::~MainWindow()
 {
+    if (sim != nullptr)
+        sim->setVentanaPrincipal(nullptr);
+    if (mapaWidget != nullptr)
+        mapaWidget->setVentanaPrincipal(nullptr);
     delete ui;
     ui = nullptr;
 }

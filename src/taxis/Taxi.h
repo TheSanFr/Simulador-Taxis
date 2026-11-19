@@ -11,7 +11,7 @@ class Grafo;
 
 class Taxi
 {
-protected:
+private:
     int id;
     QString nombre;
     QColor color;
@@ -26,6 +26,7 @@ protected:
     QPointF finTramo;
     double progresoTramo;
     double duracionTramo;
+    double pesoTramo;
     double esperaPensar;
 
     int ruta[100];
@@ -33,7 +34,9 @@ protected:
 
     bool llevaPasajero;
     int destinoPasajeroABordo;
-    double tarifaPasajeroABordo;
+    int saltosCarrera;
+    double tiempoPonderadoCarrera;
+    double recargosCarrera;
     int idPasajeroObjetivo;
 
     int viajes;
@@ -62,6 +65,10 @@ public:
     bool getLlevaPasajero() const;
     int getDestinoPasajeroABordo() const;
     double getTarifaPasajeroABordo() const;
+    double getValorTaximetro() const;
+    double getRecargosCarrera() const;
+    int getSaltosCarrera() const;
+    double getTiempoPonderadoCarrera() const;
     int getIdPasajeroObjetivo() const;
     int getViajes() const;
     double getIngresos() const;
@@ -74,7 +81,7 @@ public:
     void setEsperaPensar(double espera);
     void sumarExplorados(int cantidad);
 
-    void subirPasajero(int destino, double tarifa);
+    void subirPasajero(int destino, QString tipoDestino, QString periodo);
 
     void bajarPasajero();
 
